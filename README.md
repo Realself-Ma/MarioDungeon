@@ -9,7 +9,7 @@
 
 迷宫模式参考了https://blog.csdn.net/Mahabharata_/article/details/70616455   【第二个文件】
 
-地牢模式参考了https://blog.csdn.net/Mahabharata_/article/details/70616455   【第三个文件】
+地牢模式参考了https://github.com/HaloOrangeWang/MtForCpp   【第三个文件】
 
 其实这个游戏是我用来提交学校中期筛选的软件大作业的，但是我学的是通信，老师希望我们提交跟通信相关的仿真，所以再花了10天左右把这个游戏做出来后，把报告写完后，
 我不得不再做一份通信仿真提交给老师。我的报告也在项目中，希望提交C++大作业、又对Qt感兴趣的朋友可以拿去用，但不要用于商用。
