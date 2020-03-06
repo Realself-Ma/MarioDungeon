@@ -146,7 +146,6 @@ void maze::CreateMaze()
     {
         temp.i=i;
         temp.j=j;
-        //构造函数中生成的变量，在类中其他函数中也可以调用
         int randNum=qrand()%4;//randNum是随机的，所以每次生成的迷宫也是随机的
         switch(randNum)
         {
