@@ -430,7 +430,7 @@ void Dungeon::initialCharacterPos()
                 {
                     tempx=i;
                     tempy=j;
-                    break;//一次break循环就跳出了整个循环,别听b站上那个做视频的瞎bb
+                    break;//一次break跳一层循环
                 }
             }
         }
