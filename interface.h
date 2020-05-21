@@ -1,16 +1,10 @@
 #ifndef INTERFACE_H
 #define INTERFACE_H
 
-#include <QWidget>
-#include <QPushButton>
-#include <QProgressBar>
-#include <QTimer>
-#include <QLabel>
 #include <QPainter>
-#include <QStyleFactory>
 #include <QMessageBox>
 #include <QApplication>
-#include <QMediaPlayer>
+#include "factory.h"
 class interface : public QWidget
 {
     Q_OBJECT
@@ -21,10 +15,10 @@ public:
     bool isok;
     bool classicalisok;
     bool Dungeonisok;
-    QMediaPlayer *BGM;
-    QTimer *BGMTimer;
+    bool surfaceShow;
     void showMianMenu();
 private:
+    Factory *fac;
     QLabel* msgLabel;
     QPushButton* button_classical;
     QPushButton* button_Dungeon;
@@ -34,12 +28,13 @@ private:
     QPainter* painter;
 private:
     void paintEvent(QPaintEvent*);
+    void drawPage(QPainter*painter,QString url);
+    void drawStartPage();
 public slots:
     void classicalStart();
     void DungeonStart();
     void loading();
     void Quit();
-    void CheckBGMstate();
     void AboutShow();
 };
 

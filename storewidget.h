@@ -1,12 +1,11 @@
 #ifndef STOREWIDGET_H
 #define STOREWIDGET_H
 
-#include <QWidget>
-#include <QLabel>
 #include <QGraphicsView>
 #include <QTimer>
 #include <QKeyEvent>
 #include <QShowEvent>
+#include "factory.h"
 class StoreWidget : public QWidget
 {
     Q_OBJECT
@@ -22,6 +21,7 @@ public:
 private:
     int OptionNum; //有多少个选项
     int border_color_it;
+    Factory *fac;
     QString OptionBoxColor[6]= {"FFFFFF", "CCCCCC", "999999", "666666", "999999", "CCCCCC"};
     QTimer *OptionBoxTimer;
     QGraphicsView *OptionBox;

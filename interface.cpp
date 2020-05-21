@@ -8,16 +8,11 @@ QString msg[] = {"加载中.","加载中..","加载中...","加载中...."};
 interface::interface(QWidget *parent) :
     QWidget(parent)
 {
-    msgLabel = new QLabel(this);//提示信息
-    msgLabel->setGeometry(380,440,100,75);
-    msgLabel->setStyleSheet("color:white");
-    msgLabel->setFont(QFont("Microsoft YaHei",13));
+    fac=new Factory();
+    msgLabel=fac->CreateQLabel(this,380,440,100,75,"","color:white",QFont("Microsoft YaHei",13));
     msgLabel->hide();
 
-    probar = new QProgressBar(this);//进度条
-    probar->setStyle(QStyleFactory::create("fusion"));
-    probar->setGeometry(180,500,480,15);
-    probar->setTextVisible(true);
+    probar=fac->CreateQProgressBar(this,180,500,480,15,true);
     probar->hide();
 
     timer = new QTimer(this);
@@ -28,71 +23,43 @@ interface::interface(QWidget *parent) :
                          "QPushButton:hover{background-color:palegreen; color: orangered;}"
                          "QPushButton:pressed{background-color:aquamarine;border-style:inset;}";
 
-    button_classical= new QPushButton(this);//开始界面上的play按钮
-    button_classical->setGeometry(360,285,120,30);
-    button_classical->setText("迷宫模式");
-    button_classical->setStyleSheet(button_style);
-    button_classical->setFont(font);
+    button_classical= fac->CreateQPushButton(this,360,285,120,30,"迷宫模式",button_style,font);//开始界面上的play按钮
     connect(button_classical,SIGNAL(clicked()),this,SLOT(classicalStart()));
 
 
-    button_Dungeon=new QPushButton(this);
-    button_Dungeon->setGeometry(360,325,120,30);
-    button_Dungeon->setText("地牢模式");
-    button_Dungeon->setStyleSheet(button_style);
-    button_Dungeon->setFont(font);
+    button_Dungeon= fac->CreateQPushButton(this,360,325,120,30,"地牢模式",button_style,font);
     connect(button_Dungeon,SIGNAL(clicked()),this,SLOT(DungeonStart()));
 
-    button_Quit=new QPushButton(this);
-    button_Quit->setGeometry(360,365,120,30);
-    button_Quit->setText("离开游戏");
-    button_Quit->setStyleSheet(button_style);
-    button_Quit->setFont(font);
+    button_Quit= fac->CreateQPushButton(this,360,365,120,30,"离开游戏",button_style,font);
     connect(button_Quit,SIGNAL(clicked()),this,SLOT(Quit()));
 
-    button_About=new QPushButton(this);
-    button_About->setGeometry(360,405,120,30);
-    button_About->setText("关于");
-    button_About->setStyleSheet(button_style);
-    button_About->setFont(font);
+    button_About= fac->CreateQPushButton(this,360,405,120,30,"关于",button_style,font);
     connect(button_About,SIGNAL(clicked()),this,SLOT(AboutShow()));
 
     isok=false;
     classicalisok=false;
     Dungeonisok=false;
-
-    BGM=new QMediaPlayer(this);
-    BGM->setMedia(QUrl("qrc:/music/music/maze_main_theme.mp3"));//相对路径
-    BGM->setVolume(50);
-    BGM->play();
-    BGMTimer=new QTimer(this);
-    connect(BGMTimer,SIGNAL(timeout()),this,SLOT(CheckBGMstate()));
-    BGMTimer->start(10);
+    surfaceShow=true;
+}
+void interface::drawPage(QPainter *painter, QString url)
+{
+    painter->drawImage(geometry(),QImage(url));
+}
+void interface::drawStartPage()
+{
+    painter = new QPainter(this);
+    if(!isok)
+        drawPage(painter,":/interface/image/interface/StartPage.png");//游戏开始页
+    else if(classicalisok)
+        drawPage(painter,":/interface/image/interface/MazeDemo.png");//迷宫开始页
+    else
+          drawPage(painter,":/interface/image/interface/SetNamePage.PNG");//地牢开始页
+    painter->end();
 }
 
 void interface::paintEvent(QPaintEvent*)
 {
-
-    painter = new QPainter(this);
-    if(!isok)
-    {
-        QImage pixmap(":/interface/image/interface/StartPage.png");//开始页
-        painter->drawImage(geometry(),pixmap);
-    }
-    else
-    {
-        if(classicalisok)
-        {
-            QImage pixmap(":/interface/image/interface/MazeDemo.png");//迷宫介绍页
-            painter->drawImage(geometry(),pixmap);
-        }
-        else
-        {
-            QImage pixmap(":/interface/image/interface/SetNamePage.PNG");//设置角色名页
-            painter->drawImage(geometry(),pixmap);
-        }
-    }
-    painter->end();
+    drawStartPage();
 }
 void interface::showMianMenu()
 {
@@ -100,6 +67,7 @@ void interface::showMianMenu()
     button_Dungeon->show();
     button_Quit->show();
     button_About->show();
+    surfaceShow=true;
 }
 
 void interface::classicalStart()
@@ -156,13 +124,6 @@ void interface::Quit()
     {
         return;
     }
-}
-void interface::CheckBGMstate()
-{
-   if(BGM->state()==0)//0代表停止 1代表播放 2代表暂停
-   {
-       BGM->play();
-   }
 }
 void interface::AboutShow()
 {

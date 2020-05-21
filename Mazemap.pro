@@ -17,13 +17,17 @@ SOURCES += main.cpp\
     maze.cpp \
     interface.cpp \
     Dungeon.cpp \
-    storewidget.cpp
+    storewidget.cpp \
+    factory.cpp \
+    sound.cpp
 
 HEADERS  += mainwindow.h \
     maze.h \
     interface.h \
     Dungeon.h \
-    storewidget.h
+    storewidget.h \
+    factory.h \
+    sound.h
 
 FORMS    +=
 

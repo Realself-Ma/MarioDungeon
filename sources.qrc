@@ -140,16 +140,17 @@
         <file>image/DungeonNew/27/271.png</file>
         <file>image/DungeonNew/27/273.png</file>
         <file>image/DungeonNew/27/272.png</file>
-        <file>image/DungeonNew/Mario/down00.png</file>
-        <file>image/DungeonNew/Mario/left00.png</file>
-        <file>image/DungeonNew/Mario/left01.png</file>
-        <file>image/DungeonNew/Mario/left02.png</file>
-        <file>image/DungeonNew/Mario/left03.png</file>
-        <file>image/DungeonNew/Mario/right00.png</file>
-        <file>image/DungeonNew/Mario/right01.png</file>
-        <file>image/DungeonNew/Mario/right02.png</file>
-        <file>image/DungeonNew/Mario/right03.png</file>
-        <file>image/DungeonNew/Mario/up00.png</file>
+        <file>image/DungeonNew/30.png</file>
+        <file>image/DungeonNew/37.png</file>
+        <file>image/DungeonNew/38.png</file>
+        <file>image/DungeonNew/39/390.png</file>
+        <file>image/DungeonNew/39/391.png</file>
+        <file>image/DungeonNew/39/392.png</file>
+        <file>image/DungeonNew/39/393.png</file>
+        <file>image/DungeonNew/40/400.png</file>
+        <file>image/DungeonNew/40/401.png</file>
+        <file>image/DungeonNew/40/402.png</file>
+        <file>image/DungeonNew/40/403.png</file>
     </qresource>
     <qresource prefix="/music">
         <file>music/coin.mp3</file>

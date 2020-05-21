@@ -11,44 +11,19 @@ void StoreWidget::initialStoreWin()
     QFont font("Microsoft YaHei" ,12, 30);
     this->setFont(font);
     StoreWin->setStyleSheet("color:white;background-color:black");
-    QLabel *Store_pic=new QLabel(StoreWin);
-    text1=new QLabel(StoreWin);
-    text2=new QLabel(StoreWin);
-    hpOption=new QLabel(StoreWin);
-    mpOption=new QLabel(StoreWin);
-    atkOption=new QLabel(StoreWin);
-    defOption=new QLabel(StoreWin);
-    exitOption=new QLabel(StoreWin);
+
+    fac=new Factory();
+    QLabel *Store_pic=fac->CreateQLabel(StoreWin,10,10,30,30,"","border-image: url(:/info/image/information/Store.png);");
+    text1=fac->CreateQLabel(StoreWin,50,10,192,30,"你若给我 20 个金币");
+    text2=fac->CreateQLabel(StoreWin,50,50,192,30,"我就可以帮你");
+    hpOption=fac->CreateQLabel(StoreWin,32,112,192,32,"提升 100 点生命");
+    mpOption=fac->CreateQLabel(StoreWin,32,160,192,32,"提升 20 点魔法");
+    atkOption=fac->CreateQLabel(StoreWin,32,208,192,32,"提升 2 点攻击力");
+    defOption=fac->CreateQLabel(StoreWin,32,256,192,32,"提升 4 点防御力");
+    exitOption=fac->CreateQLabel(StoreWin,32,304,192,32,"离开商店");
+
     OptionBox=new QGraphicsView(StoreWin);//最后构造的控件会在最上面
     OptionBox->setStyleSheet("border:3px solid #FFFFFF;");
-
-    Store_pic->setStyleSheet("border-image: url(:/info/image/information/Store.png);");
-    Store_pic->setGeometry(10,10,30,30);
-    text1->setGeometry(50,10,192,30);
-    text2->setGeometry(50,50,192,30);
-    hpOption->setGeometry(32,112,192,32);
-    mpOption->setGeometry(32,160,192,32);
-    atkOption->setGeometry(32,208,192,32);
-    defOption->setGeometry(32,256,192,32);
-    exitOption->setGeometry(32,304,192,32);
-
-    text1->setAlignment(Qt::AlignCenter);
-    text2->setAlignment(Qt::AlignCenter);
-    hpOption->setAlignment(Qt::AlignCenter);
-    mpOption->setAlignment(Qt::AlignCenter);
-    atkOption->setAlignment(Qt::AlignCenter);
-    defOption->setAlignment(Qt::AlignCenter);
-    exitOption->setAlignment(Qt::AlignCenter);
-
-    text1->setText("你若给我 20 个金币");
-    text2->setText("我就可以帮你");
-    hpOption->setText("提升 100 点生命");
-    mpOption->setText("提升 20 点魔法");
-    atkOption->setText("提升 2 点攻击力");
-    defOption->setText("提升 4 点防御力");
-    exitOption->setText("离开商店");
-
-
     OptionBox->setGeometry(32,112,192,32);
 
     OptionBoxTimer = new QTimer;
