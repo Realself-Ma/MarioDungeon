@@ -73,14 +73,6 @@ void MainWindow::initialWindow_Layout()
     this->setCentralWidget(MainWidget);
 }
 
-QString intToQString(int num)
-{
-    QString result="";
-    result.sprintf("%d",num);
-    return result;
-}
-
-
 //角色跳跃方式移动(结合布局管理器)
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
