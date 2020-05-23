@@ -31,10 +31,10 @@ void StoreWidget::initialStoreWin()
     OptionNum = 5;//选项数
     chooseOption = 0;//选择的选项
     BuyTimes=1;//购买次数
-    Currstore_price=0;
+    Currstore_price=20;
     haveBuyTimer=new QTimer(this);
     StoreWinisShow=false;
-    setChooseEnable=true;
+    setChooseEnable=false;
 
     connect(OptionBoxTimer, SIGNAL(timeout()), this, SLOT(OptionBoxborderChanged()));
     OptionBoxTimer->start(100);
