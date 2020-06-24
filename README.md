@@ -1,5 +1,5 @@
-# [:horse:[Qt] 迷宫与地牢游戏](https://github.com/Realself-Ma/Maze-Dungeon)
-> 涉及迷宫随机生成、自动寻路、布局管理器、动态效果、界面切换、音频播放。将迷宫、魔塔、超级玛丽等游戏元素结合到一起。
+# [:horse:[Qt] 马里奥地牢-联网PK小游戏](https://github.com/Realself-Ma/MarioDungeon)
+> Qt写的一个地牢类双人联网PK游戏，后台服务器基于muduo网络库实现。
 >
 
 | Part Ⅰ                                                       | Part Ⅱ                                                       | Part Ⅲ                                                       | Part Ⅳ                                                       | Part Ⅴ                                                       | Part Ⅵ                                                       |
