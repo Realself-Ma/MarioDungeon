@@ -2,39 +2,42 @@
 #define INTERFACE_H
 
 #include <QPainter>
+#include <QMovie>
+#include <QResizeEvent>
 #include <QMessageBox>
 #include <QApplication>
 #include "factory.h"
+#include "sign.h"
 class interface : public QWidget
 {
     Q_OBJECT
 public:
     explicit interface(QWidget *parent = 0);
+    void resizeEvent(QResizeEvent*);
 public:
+    Sign* sign;
     QTimer* timer;
+    QPushButton* button_NetPlay;
+    QPushButton* button_LocalDungeon;
+    QPushButton *button_Quit;
+    QPushButton *button_About;
     bool isok;
-    bool classicalisok;
     bool Dungeonisok;
     bool surfaceShow;
     void showMianMenu();
 private:
     Factory *fac;
     QLabel* msgLabel;
-    QPushButton* button_classical;
-    QPushButton* button_Dungeon;
-    QPushButton *button_Quit;
-    QPushButton *button_About;
+    QLabel* GifLabel;
     QProgressBar* probar;//进度条
     QPainter* painter;
-private:
-    void paintEvent(QPaintEvent*);
-    void drawPage(QPainter*painter,QString url);
-    void drawStartPage();
+    QTimer* QuitTimer;
 public slots:
-    void classicalStart();
-    void DungeonStart();
+    void NetPlayStart();
+    void LocalDungeonStart();
     void loading();
     void Quit();
+    void doQuit();
     void AboutShow();
 };
 

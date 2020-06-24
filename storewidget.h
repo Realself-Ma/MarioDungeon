@@ -18,6 +18,7 @@ public:
     bool StoreWinisShow;//商店窗口是否显示
     int Currstore_price;//当前价格
     int Nextstore_price;//下一次价格
+    void initialStoreDatas();
 private:
     int OptionNum; //有多少个选项
     int border_color_it;
@@ -25,7 +26,6 @@ private:
     QString OptionBoxColor[6]= {"FFFFFF", "CCCCCC", "999999", "666666", "999999", "CCCCCC"};
     QTimer *OptionBoxTimer;
     QGraphicsView *OptionBox;
-    QWidget *StoreWin;
     QLabel *text1;
     QLabel *text2;
     QLabel *hpOption;

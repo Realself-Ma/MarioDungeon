@@ -1,6 +1,7 @@
 #include "interface.h"
 #include <QPalette>
 #include <QPixmap>
+#include <QMovie>
 #include <QFont>
 #include <QDebug>
 int msgNum=0;
@@ -15,77 +16,78 @@ interface::interface(QWidget *parent) :
     probar=fac->CreateQProgressBar(this,180,500,480,15,true);
     probar->hide();
 
+    GifLabel=new QLabel(this);
+    GifLabel->setScaledContents(true);//设置标签填满窗口
+
     timer = new QTimer(this);
     connect(timer,SIGNAL(timeout()),this,SLOT(loading()));
 
-    QFont font("Microsoft YaHei" ,16, 55);
-    QString button_style="QPushButton{background-color:transparent;color:white;border-radius:5px;}"
+    QuitTimer=new QTimer(this);
+    connect(QuitTimer,SIGNAL(timeout()),this,SLOT(doQuit()));
+
+    sign=new Sign();
+    sign->resize(400,200);//不设置位置，默认居中显示
+    sign->hide();
+
+    QFont font("Microsoft YaHei" ,20, 85);
+    QString button_style="QPushButton{background-color:transparent;color:papayawhip;border-radius:5px;}"
                          "QPushButton:hover{background-color:palegreen; color: orangered;}"
                          "QPushButton:pressed{background-color:aquamarine;border-style:inset;}";
 
-    button_classical= fac->CreateQPushButton(this,360,285,120,30,"迷宫模式",button_style,font);//开始界面上的play按钮
-    connect(button_classical,SIGNAL(clicked()),this,SLOT(classicalStart()));
+    button_NetPlay= fac->CreateQPushButton(this,340,190,160,60,"联网对战",button_style,font);
+    connect(button_NetPlay,SIGNAL(clicked()),this,SLOT(NetPlayStart()));
 
 
-    button_Dungeon= fac->CreateQPushButton(this,360,325,120,30,"地牢模式",button_style,font);
-    connect(button_Dungeon,SIGNAL(clicked()),this,SLOT(DungeonStart()));
+    button_LocalDungeon= fac->CreateQPushButton(this,340,270,160,60,"单机模式",button_style,font);
+    connect(button_LocalDungeon,SIGNAL(clicked()),this,SLOT(LocalDungeonStart()));
 
-    button_Quit= fac->CreateQPushButton(this,360,365,120,30,"离开游戏",button_style,font);
+    button_Quit= fac->CreateQPushButton(this,340,350,160,60,"离开游戏",button_style,font);
     connect(button_Quit,SIGNAL(clicked()),this,SLOT(Quit()));
 
-    button_About= fac->CreateQPushButton(this,360,405,120,30,"关于",button_style,font);
+    button_About= fac->CreateQPushButton(this,340,430,160,60,"关于",button_style,font);
     connect(button_About,SIGNAL(clicked()),this,SLOT(AboutShow()));
 
     isok=false;
-    classicalisok=false;
     Dungeonisok=false;
     surfaceShow=true;
 }
-void interface::drawPage(QPainter *painter, QString url)
+void interface::resizeEvent(QResizeEvent*)
 {
-    painter->drawImage(geometry(),QImage(url));
-}
-void interface::drawStartPage()
-{
-    painter = new QPainter(this);
+    GifLabel->clear();
     if(!isok)
-        drawPage(painter,":/interface/image/interface/StartPage.png");//游戏开始页
-    else if(classicalisok)
-        drawPage(painter,":/interface/image/interface/MazeDemo.png");//迷宫开始页
+    {
+        QMovie *movie = new QMovie(":/interface/image/interface/StartPage.gif");
+        GifLabel->setMovie(movie);
+        movie->start();
+    }
     else
-          drawPage(painter,":/interface/image/interface/SetNamePage.PNG");//地牢开始页
-    painter->end();
+    {
+        //QMovie *movie = new QMovie(":/interface/image/interface/SetNamePage.PNG");
+        //GifLabel->setMovie(movie);
+        //movie->start();
+        GifLabel->setStyleSheet("border-image: url(:/interface/image/interface/SetNamePage.PNG);");
+    }
+    GifLabel->resize(this->size());
 }
 
-void interface::paintEvent(QPaintEvent*)
-{
-    drawStartPage();
-}
 void interface::showMianMenu()
 {
-    button_classical->show();
-    button_Dungeon->show();
+    button_NetPlay->show();
+    button_LocalDungeon->show();
     button_Quit->show();
     button_About->show();
     surfaceShow=true;
 }
 
-void interface::classicalStart()
+void interface::NetPlayStart()
 {
-    button_classical->hide();//play按钮隐藏
-    button_Dungeon->hide();
-    button_Quit->hide();
-    button_About->hide();
-    msgLabel->show();//提示消息显示
-
-    timer->start(100);//启动计数器
-    probar->show();//进度前显示
-    classicalisok=true;
+    sign->show();
 }
-void interface::DungeonStart()
+
+void interface::LocalDungeonStart()
 {
-    button_classical->hide();//play按钮隐藏
-    button_Dungeon->hide();
+    button_NetPlay->hide();//play按钮隐藏
+    button_LocalDungeon->hide();
     button_Quit->hide();
     button_About->hide();
     msgLabel->show();//提示消息显示
@@ -105,7 +107,7 @@ void interface::loading()
         probar->hide();
         isok=true;
         probar->setValue(0);
-        this->update();//更新窗口，触发绘图事件
+        resizeEvent(nullptr);
     }
 
 }
@@ -118,12 +120,18 @@ void interface::Quit()
     message.setButtonText(QMessageBox::No, QString("返 回"));
     if(message.exec()==QMessageBox::Yes)
     {
-        qApp->quit();//退出当前应用程序，需要 QApplication的头文件
+        sign->roomWidget->chatRoom->initialPlayerRequest();
+        QuitTimer->start(100);
     }
     else
     {
         return;
     }
+}
+void interface::doQuit()
+{
+    qApp->quit();//退出当前应用程序，需要 QApplication的头文件
+    QuitTimer->stop();
 }
 void interface::AboutShow()
 {

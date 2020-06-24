@@ -7,14 +7,14 @@ StoreWidget::StoreWidget(QWidget *parent) : QWidget(parent)
 }
 void StoreWidget::initialStoreWin()
 {
-    StoreWin=new QWidget(this);//类中不定义一个主窗口，那么新建的类对象也会没有主窗口
+    QWidget *StoreWin=new QWidget(this);//类中不定义一个主窗口，那么新建的类对象也会没有主窗口
     QFont font("Microsoft YaHei" ,12, 30);
     this->setFont(font);
     StoreWin->setStyleSheet("color:white;background-color:black");
 
     fac=new Factory();
     QLabel *Store_pic=fac->CreateQLabel(StoreWin,10,10,30,30,"","border-image: url(:/info/image/information/Store.png);");
-    text1=fac->CreateQLabel(StoreWin,50,10,192,30,"你若给我 20 个金币");
+    text1=fac->CreateQLabel(StoreWin,50,10,192,30,"你若给我 40 个金币");
     text2=fac->CreateQLabel(StoreWin,50,50,192,30,"我就可以帮你");
     hpOption=fac->CreateQLabel(StoreWin,32,112,192,32,"提升 100 点生命");
     mpOption=fac->CreateQLabel(StoreWin,32,160,192,32,"提升 20 点魔法");
@@ -26,18 +26,22 @@ void StoreWidget::initialStoreWin()
     OptionBox->setStyleSheet("border:3px solid #FFFFFF;");
     OptionBox->setGeometry(32,112,192,32);
 
+    initialStoreDatas();
     OptionBoxTimer = new QTimer;
+    haveBuyTimer=new QTimer(this);
+
+    connect(OptionBoxTimer, SIGNAL(timeout()), this, SLOT(OptionBoxborderChanged()));
+    OptionBoxTimer->start(100);
+}
+void StoreWidget::initialStoreDatas()
+{
     border_color_it=0;
     OptionNum = 5;//选项数
     chooseOption = 0;//选择的选项
     BuyTimes=1;//购买次数
-    Currstore_price=20;
-    haveBuyTimer=new QTimer(this);
+    Currstore_price=40;
     StoreWinisShow=false;
     setChooseEnable=false;
-
-    connect(OptionBoxTimer, SIGNAL(timeout()), this, SLOT(OptionBoxborderChanged()));
-    OptionBoxTimer->start(100);
 }
 void StoreWidget::OptionBoxborderChanged()
 {
@@ -54,7 +58,7 @@ void StoreWidget::OptionBoxborderChanged()
 }
 
 void StoreWidget::keyPressEvent(QKeyEvent *event)
-{   
+{
     if(event->key() == Qt::Key_W)
     { //向上
         if (chooseOption > 0)
@@ -79,8 +83,8 @@ void StoreWidget::keyPressEvent(QKeyEvent *event)
     {
         if (chooseOption != OptionNum - 1)//不是选择的离开商店选项
         {
-            Currstore_price=((BuyTimes) * (BuyTimes) - (BuyTimes) + 2) * 10;
-            Nextstore_price = ((BuyTimes +1 ) * (BuyTimes +1 ) - (BuyTimes +1 ) + 2) * 10;
+            Currstore_price=((BuyTimes) * (BuyTimes) - (BuyTimes) + 2) * 20;
+            Nextstore_price = ((BuyTimes +1 ) * (BuyTimes +1 ) - (BuyTimes +1 ) + 2) * 20;
 
             haveBuyTimer->start(100);//开启购买（计时器开启后不是马上执行，而是在当前函数执行完毕后才开始执行,
                                               //所以，如果在执行计时器后才改变setChooseEnable的值，那么在

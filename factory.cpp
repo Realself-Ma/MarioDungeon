@@ -82,11 +82,10 @@ QMediaPlaylist* Factory::CreateQMediaPlaylist(QWidget* pos)
     QMediaPlaylist* p=new QMediaPlaylist(pos);//游戏音效
     p->addMedia(QUrl("qrc:/music/music/coin.mp3"));//硬币音效
     p->addMedia(QUrl("qrc:/music/music/powerup.mp3"));//升级音效
-    p->addMedia(QUrl("qrc:/music/music/flagpole.wav"));//碰到旗子音效
+    p->addMedia(QUrl("qrc:/music/music/flagpole.mp3"));//碰到旗子音效
     p->addMedia(QUrl("qrc:/music/music/stomp.mp3"));//捡到钥匙音效
-    p->addMedia(QUrl("qrc:/music/music/count_down.mp3"));//战斗计算音效
     p->addMedia(QUrl("qrc:/music/music/one_up.mp3"));//吃到蘑菇音效
-    p->addMedia(QUrl("qrc:/music/music/pipe.mp3"));//开门音效
+    p->addMedia(QUrl("qrc:/music/music/death.mp3"));//死亡音效
     return p;
 }
 
@@ -111,5 +110,27 @@ QLineEdit* Factory::CreateQLineEdit(QMainWindow*pos,int x, int y, int w,int h,QS
     p->setGeometry(x,y,w,h);
     p->setStyleSheet(StyleSheet);
     p->setFont(Font);
+    return p;
+}
+QTcpSocket* Factory::CreateQTcpSocket(QString ServerIp,int ServerPort)
+{
+    QTcpSocket* tcpSocket = new QTcpSocket();
+    QHostAddress* serverIP = new QHostAddress();
+    QString ip = ServerIp;
+    serverIP->setAddress(ip);
+    serverIP->setAddress(ip);
+    tcpSocket->connectToHost(*serverIP, ServerPort);
+    return tcpSocket;
+}
+QToolButton* Factory::CreateQToolButton(QString text,int w,int h,QString url,bool Enable)
+{
+    QToolButton* p=new QToolButton();
+    p->setText(text);
+    p->setMinimumSize(w,h);
+    p->setIcon(QPixmap(url));
+    p->setIconSize(QPixmap(url).size());
+    p->setAutoRaise(true);
+    p->setEnabled(Enable);
+    p->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     return p;
 }

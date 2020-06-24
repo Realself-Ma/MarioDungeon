@@ -1,11 +1,20 @@
 #include "Dungeon.h"
 #include <QDebug>
+#include <QTime>
+std::vector<std::vector<int>> directions{{0,-1},{0,1},{-1,0},{1,0}};
+int ***map;//三维数组
+int Total_Floor;
+QTimer *NetStartTimer;
+QTimer *pkStartTimer;
+QTimer *pkMapUdTimer;
+QTimer *FightTimer;
+QTimer *CmptorGameOverCallTimer;
 Dungeon::Dungeon(QWidget *parent): QWidget(parent)
 {
     Total_Floor=7;
     //开辟堆上三维数组
-    map=new int **[Total_Floor];
-    for(int i=0;i<Total_Floor;i++)
+    map=new int **[Total_Floor+1];
+    for(int i=0;i<Total_Floor+1;i++)
     {
         map[i]=new int *[12];
         for(int j=0;j<12;j++)
@@ -17,7 +26,11 @@ Dungeon::Dungeon(QWidget *parent): QWidget(parent)
             }
         }
     }
-    initialMap();
+
+    QTime time=QTime::currentTime();
+    qsrand(time.msec()+time.second()*1000);
+
+    initialFogArr();
     initialMapString();
     initialMonsterPic();
     initialrole();
@@ -30,11 +43,29 @@ Dungeon::Dungeon(QWidget *parent): QWidget(parent)
     fight_end_it = 0;
     moveDirection=-1;
     moveNum=0;
+    pre_x=1;
+    pre_y=1;
+    pre_floor=1;
+    MyPonit=0;
+    CmptorPoint=0;
+    CountDown=10;
+    NetModeStart=false;
+    MyWin=false;
+    dogFall=false;
     isFighting=false;
     display_it=0;
-
+    PickaxeUse=false;
+    isDead=false;
     fac=new Factory();
     music=new Sound();
+    NetStartTimer=new QTimer;
+    pkStartTimer=new QTimer;
+    pkMapUdTimer=new QTimer;
+    CmptorGameOverCallTimer=new QTimer;
+    connect(NetStartTimer,SIGNAL(timeout()),this,SLOT(NetStart()));
+    connect(pkStartTimer,SIGNAL(timeout()),this,SLOT(pkStart()));
+    connect(pkMapUdTimer,SIGNAL(timeout()),this,SLOT(pkMapUpdate()));
+    connect(CmptorGameOverCallTimer,SIGNAL(timeout()),this,SLOT(competitorGameOverCall()));
 }
 Dungeon::~Dungeon(){}
 void Dungeon::initialrole()
@@ -43,66 +74,75 @@ void Dungeon::initialrole()
     role.level=1;
     role.exp=0;
     role.hp=100;
-    role.mp=50;
+    role.mp=100;
     role.atk=5;
     role.def=3;
     role.scoreNum=0;
-    role.yellowkey=0;
-    role.purplekey=0;
-    role.redkey=0;
+    role.Pickaxe=0;
+    role.Downstairs=0;
 }
 
 void Dungeon::initialenemy()
 {
-    enemy[0].name="小星星";//3
-    enemy[0].hp=50;
-    enemy[0].atk=2;
-    enemy[0].def=2;
+    enemy[0].name="小星星";//15
+    enemy[0].hp=60;
+    enemy[0].atk=4;//4
+    enemy[0].def=1;//1
     enemy[0].exp=4;
     enemy[0].gold=5;
 
-    enemy[1].name="毒蘑菇";//4
+    enemy[1].name="毒蘑菇";//16
     enemy[1].hp=100;
-    enemy[1].atk=6;
-    enemy[1].def=4;
+    enemy[1].atk=9;
+    enemy[1].def=5;
     enemy[1].exp=8;
     enemy[1].gold=10;
 
-    enemy[2].name="绿鸭子";//11
+    enemy[2].name="绿鸭子";//18
     enemy[2].hp=200;
-    enemy[2].atk=10;
-    enemy[2].def=8;
+    enemy[2].atk=16;
+    enemy[2].def=12;
     enemy[2].exp=16;
     enemy[2].gold=20;
 
-    enemy[3].name="红鸭子";//12
+    enemy[3].name="红鸭子";//19
     enemy[3].hp=300;
-    enemy[3].atk=20;
-    enemy[3].def=16;
+    enemy[3].atk=24;
+    enemy[3].def=14;
     enemy[3].exp=32;
     enemy[3].gold=30;
 
-    enemy[4].name="食人花-绿";//25
+    enemy[4].name="食人花-绿";//20
     enemy[4].hp=600;
-    enemy[4].atk=30;
-    enemy[4].def=24;
+    enemy[4].atk=32;
+    enemy[4].def=20;
     enemy[4].exp=42;
     enemy[4].gold=40;
 
-    enemy[5].name="食人花-红";//26
+    enemy[5].name="食人花-红";//21
     enemy[5].hp=900;
-    enemy[5].atk=42;
-    enemy[5].def=18;
+    enemy[5].atk=46;
+    enemy[5].def=22;
     enemy[5].exp=52;
     enemy[5].gold=46;
 
-    enemy[6].name="飞行鸭";//27
+    enemy[6].name="飞行鸭";//22
     enemy[6].hp=1200;
-    enemy[6].atk=80;
-    enemy[6].def=12;
+    enemy[6].atk=82;
+    enemy[6].def=42;
     enemy[6].exp=64;
     enemy[6].gold=60;
 
+}
+void Dungeon::initialFogArr()
+{
+    memset(FogArr,0,sizeof(FogArr));
+    for(int i=0;i<2;++i)
+    {
+        for(int j=6;j<9;++j)
+            FogArr[3][i][j]=15;
+    }
+    memset(haveVisited,0,sizeof(haveVisited));
 }
 
 //动态贴图方式
@@ -114,12 +154,12 @@ void Dungeon::initialMapString()
         {
             if(isStatic(i))
             {
-                DungeonStytle[i][j]=QString("border-image: url(:/DungeonNew/image/DungeonNew/")+
+                DungeonStytle[i][j]=QString("border-image: url(:/Dungeon/image/Dungeon/")+
                         QString::number(i)+QString(".png);");
                 break;
             }
             else
-                DungeonStytle[i][j]=QString("border-image: url(:/DungeonNew/image/DungeonNew/")+
+                DungeonStytle[i][j]=QString("border-image: url(:/Dungeon/image/Dungeon/")+
                         QString::number(i)+"/"+QString::number(i)+QString::number(j)+QString(".png);");
         }
     }
@@ -170,204 +210,552 @@ int Dungeon::pk(struct Monster & m)
 }
 int Dungeon::calc_damage(int MonsterNum)
 {
-    if (enemy[MonsterNum].atk > role.def)
+    if (role.atk <= enemy[MonsterNum].def)
     {
-        int atk_times = (enemy[MonsterNum].hp - 1) / (role.atk - enemy[MonsterNum].def);//怪物攻击的次数
-        return atk_times * (enemy[MonsterNum].atk - role.def);//造成的伤害
+        if (enemy[MonsterNum].atk > role.def)
+            return -1;
+        else
+            return -2;
     }
     else
     {
-        return 0;//怪物破不了我们的防，造成的伤害为0
+        if (enemy[MonsterNum].atk > role.def)
+        {
+            int atk_times = (enemy[MonsterNum].hp - 1) / (role.atk - enemy[MonsterNum].def);//怪物攻击的次数
+            return atk_times * (enemy[MonsterNum].atk - role.def);//造成的伤害
+        }
+        else
+        {
+            return 0;//怪物破不了我们的防，造成的伤害为0
+        }
     }
 
 }
+int Dungeon::sum(int arr[],int n)
+{
+    if(arr==nullptr)
+        return 0;
+    int res=0;
+    for(int i=0;i<n;++i)
+        res+=arr[i];
+    return res;
+}
+void Dungeon::dfs(int arr[12][16],bool visited[12][16],QStack<std::pair<int,int>> &s,int i,int j)
+{
+    if(i<0||i>=12||j<0||j>=16||arr[i][j]==0||visited[i][j])
+        return;
+    visited[i][j]=true;
+    s.push(std::pair<int,int>(i,j));
+    for(auto dir:directions)
+        dfs(arr,visited,s,i+dir[0],j+dir[1]);
+}
+void Dungeon::bfs(int arr[12][16],QStack<std::pair<int,int>> &s,std::pair<int,int> start,std::pair<int,int> end)
+{
+    bool visited[12][16]{false};
+    QQueue<std::pair<int, int>> q;
+    q.enqueue(start);
+    visited[start.first][start.second] = true;
+    while (!q.empty())
+    {
+        int size = q.size();
+        while (size-- > 0)
+        {
+            std::pair<int, int> temp = q.dequeue();;
+            int ci = temp.first, cj = temp.second;
+            s.push(temp);
+            int index = 0;
+            visited[ci][cj] = true;
+            for (auto dir : directions)
+            {
+                int ni = ci + dir[0], nj = cj + dir[1];
+                if (ni < 0 || ni >= 12 || nj < 0 || nj >= 16 || visited[ni][nj] || arr[ni][nj] == 0)
+                {
+                    index++;
+                    if (index >= 4)
+                        s.pop();
+                    continue;
+                }
+                if (ni == end.first&&nj == end.second)
+                    return;
+                q.enqueue(std::pair<int, int>(ni, nj));
+            }
+        }
+    }
+}
+void Dungeon::doDfs(int arr[12][16],QStack<std::pair<int,int>>& s,bool visited[12][16])
+{
+    int dfsi=rand()%12;
+    int dfsj=rand()%16;
+    while(arr[dfsi%12][dfsj%16]!=1)
+    {
+        dfsj++;
+        if(dfsj%16==0)
+            dfsi++;
+    }
+    dfs(arr,visited,s,dfsi%12,dfsj%16);
+}
+
+void Dungeon::setExit(int arr[12][16],std::pair<int,int> &start,std::pair<int,int> &end)
+{    
+    QStack<std::pair<int,int>> s;
+    bool visited[12][16]{false};
+
+    doDfs(arr,s,visited);
+    //int startPos=rand()%floor;
+    int startPos=0;
+    int starti=s[startPos].first,startj=s[startPos].second;
+    int endi=s.top().first,endj=s.top().second;
+
+    while(std::abs(starti-endi)<=3||std::abs(startj-endj)<=3)
+    {
+        s.clear();
+        for(int i=0;i<12;++i)
+        {
+            for(int j=0;j<16;++j)
+                if(visited[i][j])
+                    visited[i][j]=false;
+        }
+        doDfs(arr,s,visited);
+        starti=s[startPos].first;
+        startj=s[startPos].second;
+        endi=s.top().first;
+        endj=s.top().second;
+    }
+
+    start.first=starti;
+    start.second=startj;
+    end.first=endi;
+    end.second=endj;
+    arr[starti][startj]=6;
+    arr[endi][endj]=7;
+}
+void Dungeon::GenerateMonster(int arr[12][16],int floor)
+{
+    int totalMonsterNum=40+floor*2;
+    int MonsterArr[9]{0};
+    int MonsterInitial[9]{8,8,5,3,1,0,0,0,0};
+    for(int i=0;i<9;++i)
+    {
+        if(i==0)
+        {
+            MonsterArr[i]=MonsterInitial[i]-(floor-1)*2;
+            if(MonsterArr[i]<=2)
+                MonsterArr[i]=2;
+        }
+        else if(i==1)
+        {
+            MonsterArr[i]=MonsterInitial[i]-(floor-1)*2;
+            if(MonsterArr[i]<=2)
+                MonsterArr[i]=0;
+        }
+        else if(i==2)
+            MonsterArr[i]=5;
+        else if(i==3)
+            MonsterArr[i]=3;
+        else
+        {
+            MonsterArr[i]=MonsterInitial[i]+(floor-1)*(0.5*(i-3));
+        }
+    }
+    while(sum(MonsterArr,9)<totalMonsterNum)
+    {
+        for(int i=floor-1;i<9;++i)
+            MonsterArr[i]+=1;
+    }
+    while(MonsterArr[3]>3)
+    {
+        MonsterArr[2]++;
+        MonsterArr[3]--;
+    }
+    int GenerateMonsterNum=0;
+    int MonsterArrIndex=0;
+    while(GenerateMonsterNum<totalMonsterNum)
+    {
+        for(int i=0;i<12;++i)
+        {
+            for(int j=0;j<16;++j)
+            {
+                if(arr[i][j]==1)
+                {
+                    if(MonsterArr[MonsterArrIndex++%9]!=0)
+                    {
+                        arr[i][j]= (MonsterArrIndex-1)%9+14;
+                        MonsterArr[(MonsterArrIndex-1)%9]--;
+                    }
+                    i+=rand()%6;
+                    j+=rand()%8;
+                    GenerateMonsterNum++;
+                    if(GenerateMonsterNum>=totalMonsterNum)
+                        return;
+                }
+            }
+        }
+    }
+}
+void Dungeon::GenerateItem(int arr[12][16],int floor)
+{
+    int totalBuffItemNum=5-floor+1;
+    int BuffItemArr[5]{0};
+    int BuffItemInitial[5]{2,1,1,0,0};
+    for(int i=0;i<5;++i)
+    {
+        if(i==2)
+            BuffItemArr[i]=BuffItemInitial[i]+(floor-1)*0.5;
+        else
+        {
+            BuffItemArr[i]=BuffItemInitial[i]+(floor-1)*1;
+        }
+    }
+    while(sum(BuffItemArr,5)<totalBuffItemNum)
+    {
+        for(int i=0;i<3+floor-1;++i)
+            BuffItemArr[i]+=1;
+    }
+    int GenerateBuffItemNum=0;
+    int BuffItemArrIndex=0;
+    bool GenerateBuffItemDone=false;
+    while(GenerateBuffItemNum<totalBuffItemNum)
+    {
+        for(int i=0;i<12;++i)
+        {
+            for(int j=0;j<16;++j)
+            {
+                if(arr[i][j]==1)
+                {
+                    if(BuffItemArr[BuffItemArrIndex++%5]!=0)
+                    {
+                        arr[i][j]= (BuffItemArrIndex-1)%5+23;
+                        BuffItemArr[(BuffItemArrIndex-1)%5]--;
+                    }
+                    i+=rand()%6;
+                    j+=rand()%8;
+                    GenerateBuffItemNum++;
+                    if(GenerateBuffItemNum>=totalBuffItemNum)
+                    {
+                        GenerateBuffItemDone=true;
+                        break;
+                    }
+                }
+            }
+            if(GenerateBuffItemDone)
+                break;
+        }
+        if(GenerateBuffItemDone)
+            break;
+    }
+
+    int totalToolItemNum=4-floor+1;
+    int ToolItemArr[2]{0};
+    int ToolItemInitial[2]{2,1};
+    for(int i=0;i<2;++i)
+    {
+        if(i==0)
+            ToolItemArr[i]=ToolItemInitial[i]+(floor-1)*1;
+        else
+            ToolItemArr[i]=ToolItemInitial[i]+(floor-1)*0.5;
+    }
+    while(sum(ToolItemArr,1)<totalToolItemNum)
+    {
+        for(int i=0;i<1;++i)
+            ToolItemArr[i]+=1;
+    }
+    int GenerateToolItemNum=0;
+    int ToolItemArrIndex=0;
+    while(GenerateToolItemNum<totalToolItemNum)
+    {
+        for(int i=0;i<12;++i)
+        {
+            for(int j=0;j<16;++j)
+            {
+                if(arr[i][j]==1)
+                {
+                    if(ToolItemArr[ToolItemArrIndex++%2]!=0)
+                    {
+                        arr[i][j]= (ToolItemArrIndex-1)%2+31;
+                        ToolItemArr[(ToolItemArrIndex-1)%2]--;
+                    }
+                    i+=rand()%6;
+                    j+=rand()%8;
+                    GenerateToolItemNum++;
+                    if(GenerateToolItemNum>=totalToolItemNum)
+                        return;
+                }
+            }
+        }
+    }
+
+}
+void Dungeon::GenerateEquip()
+{
+    int ironSwordFloor=2;
+    int flowerSwordFloor=4;
+    int goldenSwordFloor=7;
+    if(map[ironSwordFloor-1][10][14]==6||map[ironSwordFloor-1][10][14]==7)
+    {
+        map[ironSwordFloor-1][10][13]=28;
+    }
+    else
+        map[ironSwordFloor-1][10][14]=28;
+    if(map[flowerSwordFloor-1][10][14]==6||map[flowerSwordFloor-1][10][14]==7)
+    {
+        map[flowerSwordFloor-1][10][13]=29;
+    }
+    else
+        map[flowerSwordFloor-1][10][14]=29;
+    if(map[goldenSwordFloor-1][10][14]==6||map[goldenSwordFloor-1][10][14]==7)
+    {
+        map[goldenSwordFloor-1][10][13]=30;
+    }
+    else
+        map[goldenSwordFloor-1][10][14]=30;
+}
+
+void Dungeon::GenerateElement(int arr[12][16],int floor)
+{
+    GenerateMonster(arr,floor);
+    GenerateItem(arr,floor);
+}
+bool Dungeon::isValid(int arr[12][16],int i,int j,int floor)
+{
+    return arr[i][j]==1||arr[i][j]==6||(arr[i][j]>=8&&arr[i][j]<=14+(floor<=2?1:floor))
+            ||(arr[i][j]>=23&&arr[i][j]<=27)||arr[i][j]==31||arr[i][j]==32;
+}
+
+void Dungeon::RandomGeneraterMap(int arr[12][16],int floor)
+{
+    std::pair<int,int> start;
+    std::pair<int,int> end;
+    setExit(arr,start,end);
+    GenerateElement(arr,floor);
+    QStack<std::pair<int,int>> s;
+    bfs(arr,s,start,end);
+    while(!s.empty())
+    {
+        std::pair<int,int> temp=s.pop();
+        if(!isValid(arr,temp.first,temp.second,floor))
+            arr[temp.first][temp.second]=rand()%(floor<3?2:5)+14;
+    }
+}
+
 void Dungeon::initialMap()
 {
     floor=1;
     MAX_HP=100;
+    MAX_MP=100;
+    deadTimes=0;
     isPre=false;
     isNext=false;
-    x=11;
-    y=8;
     initialrole();
-    int num=1;
     while(1)
     {
 
-        if(num==1)
+        if(floor==1)
         {
             int tempmap[12][16]={
-                15,1,1,3,3,3,1,1,1,1,1,1,1,1,1,1,
-                0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,
-                0,8,1,1,1,3,17,1,17,1,1,22,2,5,0,1,
-                0,1,1,11,1,1,0,1,0,1,1,23,2,20,0,1,
-                0,0,0,17,0,0,0,1,0,0,0,0,17,0,0,1,
-                0,20,1,1,1,1,0,1,0,1,3,2,4,1,0,1,
-                0,20,1,11,1,1,0,1,17,3,2,4,10,1,0,1,
-                0,0,0,17,0,0,0,1,0,0,0,0,0,0,0,1,
-                0,1,1,2,1,1,0,1,1,1,1,1,1,1,1,1,
-                0,8,2,2,2,5,0,0,17,0,0,0,17,0,0,0,
-                0,8,2,2,2,5,0,20,2,2,0,1,1,4,1,0,
-                0,2,2,2,2,2,0,2,1,2,0,1,3,10,3,0
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                0,0,0,1,0,0,0,0,0,0,0,0,1,0,0,1,
+                0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                0,1,1,1,1,1,0,1,0,1,1,1,1,1,0,1,
+                0,0,0,1,0,0,0,1,0,0,0,0,1,0,0,1,
+                0,1,1,1,1,1,0,1,0,1,1,1,1,1,0,1,
+                0,1,1,1,1,1,0,1,1,1,1,1,1,1,0,1,
+                0,0,0,1,0,0,0,1,0,0,0,0,0,0,0,1,
+                0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,1,
+                0,1,1,1,1,1,0,0,1,0,0,0,1,0,0,0,
+                0,1,1,1,1,1,0,1,1,1,0,1,1,1,1,0,
+                0,1,1,1,1,1,0,1,1,1,0,1,1,1,1,0
 
             };
+            RandomGeneraterMap(tempmap,floor);
             for(int i=0;i<12;i++)
             {
                 for(int j=0;j<16;j++)
                 {
-                    map[num-1][i][j]=tempmap[i][j];
+                    map[floor-1][i][j]=tempmap[i][j];
                 }
             }
         }
-        if(num==2)
+        if(floor==2)
         {
             int tempmap[12][16]={
-                14,1,18,1,1,1,1,1,1,1,1,1,1,1,1,0,
-                1,1,0,0,0,0,19,4,20,4,21,0,0,0,0,0,
-                1,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,
-                1,0,20,20,5,5,0,1,1,1,0,12,5,2,2,0,
-                1,0,19,20,5,5,16,1,1,1,16,12,5,2,19,0,
+                1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,
+                1,1,1,1,1,0,1,1,1,1,1,0,1,1,1,0,
+                1,0,0,0,0,0,0,0,1,0,0,0,1,0,0,0,
+                1,0,1,1,1,1,0,1,1,1,0,1,1,1,1,0,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,
                 1,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,
-                1,16,5,5,12,5,0,1,1,1,0,12,8,19,2,0,
-                1,0,5,5,12,19,0,1,1,1,0,12,9,20,22,0,
-                1,0,0,0,0,0,0,1,1,1,16,12,10,21,23,0,
-                1,0,19,2,2,2,0,1,1,1,0,0,0,0,0,0,
-                1,0,5,5,10,10,0,1,1,1,0,2,2,2,2,0,
-                15,0,5,5,10,12,16,1,1,1,16,2,2,2,2,0
+                1,1,1,1,1,1,0,1,1,1,0,1,1,1,1,0,
+                1,0,1,1,1,1,0,1,1,1,0,1,1,1,1,0,
+                1,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,
+                1,1,1,1,1,1,0,1,1,1,0,0,0,0,0,0,
+                1,0,1,1,1,1,0,1,1,1,0,1,1,1,1,0,
+                0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,0
             };
+            RandomGeneraterMap(tempmap,floor);
             for(int i=0;i<12;i++)
             {
                 for(int j=0;j<16;j++)
                 {
-                    map[num-1][i][j]=tempmap[i][j];
+                    map[floor-1][i][j]=tempmap[i][j];
                 }
             }
         }
-        if(num==3)
+        if(floor==3)
         {
             int tempmap[12][16]={
-                20,1,1,22,0,20,1,1,20,0,1,0,1,1,2,1,
-                1,1,2,1,0,1,20,20,1,0,1,0,1,2,8,2,
-                1,2,8,2,0,1,1,21,1,0,1,17,4,4,2,1,
-                4,1,4,1,0,20,1,1,20,0,1,0,0,0,0,0,
-                0,0,17,0,0,0,1,1,0,0,1,0,1,1,1,1,
-                1,1,1,1,1,3,1,1,1,1,3,1,1,1,1,1,
-                0,0,17,0,0,1,1,1,1,0,1,0,0,0,0,0,
-                1,1,11,1,0,0,1,1,0,0,1,0,2,2,2,20,
-                1,4,3,20,0,1,1,1,1,0,1,17,4,4,3,8,
-                1,1,3,23,0,1,1,1,1,0,1,0,0,0,0,0,
-                0,0,0,0,0,0,1,1,0,0,3,0,1,1,1,1,
-                14,1,1,1,1,1,1,1,1,0,1,17,1,1,1,15,
+                1,1,1,1,0,1,1,1,1,0,1,0,1,1,1,1,
+                1,1,1,1,0,1,1,1,1,0,1,0,1,1,1,1,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                1,1,1,1,0,1,1,1,1,0,1,0,0,0,0,0,
+                0,0,1,0,0,0,1,1,0,0,1,0,1,1,1,1,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                0,0,1,0,0,1,1,1,1,0,1,0,0,0,0,0,
+                1,1,1,1,0,0,1,1,0,0,1,0,1,1,1,1,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                1,1,1,1,0,1,1,1,1,0,1,0,0,0,0,0,
+                0,0,0,0,0,0,1,1,0,0,1,0,1,1,1,1,
+                1,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,
             };
-
+            RandomGeneraterMap(tempmap,floor);
             for(int i=0;i<12;i++)
             {
                 for(int j=0;j<16;j++)
                 {
-                    map[num-1][i][j]=tempmap[i][j];
+                    map[floor-1][i][j]=tempmap[i][j];
                 }
             }
         }
-        if(num==4)
+        if(floor==4)
         {
             int tempmap[12][16]={
-                1,21,1,1,0,1,31,32,33,1,0,1,1,1,1,1,
-                8,2,20,1,0,1,34,35,36,1,0,1,1,1,1,1,
-                1,3,1,1,0,1,1,1,1,1,0,1,20,1,10,1,
-                1,1,1,1,0,1,1,1,1,1,0,1,1,11,1,1,
-                0,0,17,0,0,0,0,18,0,0,0,0,17,0,0,0,
-                1,1,4,1,17,1,1,3,1,1,1,11,1,1,1,1,
-                1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,
-                3,1,1,1,3,1,1,1,1,1,1,1,1,1,1,1,
-                17,0,0,0,17,0,0,0,0,17,0,0,0,0,0,17,
-                1,0,1,20,4,1,0,1,1,4,1,1,1,1,0,1,
-                1,0,1,3,1,3,0,1,23,2,8,1,1,1,0,1,
-                15,0,20,1,20,1,0,1,1,3,1,1,1,1,0,14,
+                1,1,1,1,0,1,8,9,10,1,0,1,1,1,1,1,
+                1,1,1,1,0,1,11,12,13,1,0,1,1,1,1,1,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                1,1,1,1,0,1,1,1,1,1,0,1,1,1,1,1,
+                0,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                1,1,1,1,0,0,0,0,0,1,0,0,0,0,0,0,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                1,0,0,0,1,0,0,0,0,1,0,0,0,0,0,1,
+                1,0,1,1,1,1,0,1,1,1,1,1,1,1,0,1,
+                1,0,1,1,1,1,0,1,1,1,1,1,1,1,0,1,
+                1,0,1,1,1,1,0,1,1,1,1,1,1,1,0,1,
             };
+            RandomGeneraterMap(tempmap,floor);
             for(int i=0;i<12;i++)
             {
                 for(int j=0;j<16;j++)
                 {
-                    map[num-1][i][j]=tempmap[i][j];
+                    map[floor-1][i][j]=tempmap[i][j];
                 }
             }
         }
-        if(num==5)
+        if(floor==5)
         {
             int tempmap[12][16]={
-                15,0,1,1,3,17,1,0,1,4,1,17,1,1,17,1,
-                1,0,1,1,1,0,20,0,4,2,4,0,1,1,0,1,
-                1,17,4,1,1,0,1,0,2,4,2,0,3,3,0,3,
-                0,0,0,0,17,0,3,0,2,2,2,0,20,20,0,1,
-                20,1,4,1,1,0,1,0,22,23,19,0,20,20,0,1,
-                20,1,1,1,4,0,4,0,0,0,0,0,0,0,0,1,
-                0,0,12,0,0,0,1,1,3,1,1,1,1,1,1,1,
-                1,1,12,1,1,0,3,0,0,0,0,0,0,0,0,3,
-                1,1,4,1,1,0,1,0,1,1,1,1,1,1,1,1,
-                22,23,20,8,10,0,1,0,1,1,1,0,0,0,0,0,
-                0,0,0,0,0,0,1,0,1,1,1,0,1,1,1,1,
-                14,1,1,1,1,1,1,0,1,1,1,16,1,1,1,24,
+                1,0,1,1,1,1,1,0,1,1,1,1,1,1,1,1,
+                1,0,1,1,1,0,1,0,1,1,1,0,1,1,0,1,
+                1,1,1,1,1,0,1,0,1,1,1,0,1,1,0,1,
+                0,0,0,0,1,0,1,0,1,1,1,0,1,1,0,1,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                1,1,1,1,1,0,1,0,0,0,0,0,0,0,0,1,
+                0,0,1,0,0,0,1,1,1,1,1,1,1,1,1,1,
+                1,1,1,1,1,0,1,0,0,0,0,0,0,0,0,1,
+                1,1,1,1,1,0,1,0,1,1,1,1,1,1,1,1,
+                1,1,1,1,1,0,1,0,1,1,1,0,0,0,0,0,
+                0,0,1,0,0,0,1,0,1,1,1,0,1,1,1,1,
+                1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,
             };
+            RandomGeneraterMap(tempmap,floor);
             for(int i=0;i<12;i++)
             {
                 for(int j=0;j<16;j++)
                 {
-                    map[num-1][i][j]=tempmap[i][j];
+                    map[floor-1][i][j]=tempmap[i][j];
                 }
             }
         }
-        if(num==6)
+        if(floor==6)
         {
             int tempmap[12][16]={
-                14,0,20,20,2,0,1,1,1,1,1,1,1,1,1,1,
-                1,0,20,20,2,0,1,0,0,0,0,0,0,0,0,17,
-                1,0,0,0,4,0,1,0,25,8,2,1,2,25,1,25,
-                1,17,17,1,1,17,1,0,5,1,2,25,1,2,1,1,
-                1,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,
-                1,1,1,11,4,1,20,1,1,1,25,25,1,1,1,1,
-                0,0,0,0,0,0,1,0,0,0,0,0,0,17,0,1,
-                2,1,1,4,8,0,1,0,10,2,0,0,1,4,0,1,
-                2,1,11,23,12,0,1,0,9,2,0,0,5,1,0,1,
-                4,2,1,4,1,0,1,0,8,2,26,2,4,2,0,1,
-                17,0,0,0,0,0,1,0,0,0,0,1,2,1,0,1,
-                1,1,3,1,12,1,1,0,1,1,1,19,1,1,0,15,
+                1,0,1,1,1,0,1,1,1,1,1,1,1,1,1,1,
+                1,0,1,1,1,0,1,0,0,0,0,0,0,0,0,1,
+                1,0,0,0,1,0,1,1,1,1,1,1,1,1,1,1,
+                1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,
+                1,0,0,0,0,0,1,0,0,0,0,0,0,1,0,0,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                0,0,1,0,0,0,1,0,0,0,1,0,0,1,0,1,
+                1,1,1,1,1,0,1,0,1,1,1,0,1,1,0,1,
+                1,1,1,1,1,0,1,0,1,1,1,0,1,1,0,1,
+                1,1,1,1,1,0,1,0,1,1,1,1,1,1,0,1,
+                1,0,0,0,0,0,1,0,0,0,0,1,1,1,0,1,
+                1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,
             };
+            RandomGeneraterMap(tempmap,floor);
             for(int i=0;i<12;i++)
             {
                 for(int j=0;j<16;j++)
                 {
-                    map[num-1][i][j]=tempmap[i][j];
+                    map[floor-1][i][j]=tempmap[i][j];
                 }
             }
         }
-        if(num==7)
+        if(floor==7)
         {
             int tempmap[12][16]={
-                15,0,27,29,0,22,0,1,1,1,0,10,0,20,0,3,
-                1,0,8,27,0,23,0,1,1,1,0,4,0,20,0,3,
-                1,0,8,27,0,4,0,3,0,26,0,3,0,8,0,3,
-                1,0,2,8,0,2,0,1,0,1,0,1,0,2,0,1,
-                1,0,2,10,0,1,0,1,0,1,0,1,0,1,0,1,
-                17,0,25,25,0,17,0,18,0,17,0,17,0,25,0,17,
-                1,25,1,1,12,1,1,1,1,1,1,1,1,1,1,1,
-                17,0,25,25,0,17,0,17,0,17,0,17,0,25,0,17,
-                1,0,2,2,0,1,0,1,0,1,0,1,0,1,0,1,
-                3,0,8,10,0,2,0,12,0,4,0,3,0,10,0,1,
-                3,0,8,27,0,2,0,22,0,20,0,4,0,20,0,1,
-                3,0,8,28,0,2,0,23,0,20,0,10,0,20,0,14,
+                1,0,1,1,0,1,0,1,1,1,0,1,0,1,0,1,
+                1,1,1,1,0,1,0,1,1,1,0,1,0,1,0,1,
+                1,0,1,1,0,1,1,1,0,1,0,1,0,1,0,1,
+                1,0,1,1,1,1,0,1,0,1,1,1,1,1,1,1,
+                1,0,1,1,0,1,0,1,0,1,0,1,0,1,0,1,
+                1,0,1,1,0,1,0,1,0,1,0,1,0,1,0,1,
+                1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+                1,0,1,1,0,1,0,1,0,1,0,1,0,1,0,1,
+                1,0,1,1,1,1,0,1,0,1,0,1,0,1,0,1,
+                1,0,1,1,0,1,1,1,0,1,1,1,1,1,1,1,
+                1,1,1,1,0,1,0,1,0,1,0,1,0,1,0,1,
+                1,0,1,1,0,1,0,1,0,1,0,1,0,1,0,1,
             };
+            RandomGeneraterMap(tempmap,floor);
             for(int i=0;i<12;i++)
             {
                 for(int j=0;j<16;j++)
                 {
-                    map[num-1][i][j]=tempmap[i][j];
+                    map[floor-1][i][j]=tempmap[i][j];
                 }
             }
         }
-        num++;
-        if(num>Total_Floor)
+        floor++;
+        if(floor>Total_Floor)
         {
             break;
+        }
+    }
+    floor=1;
+    setCharacterPos(floor-1,6);
+    GenerateEquip();
+}
+void Dungeon::initialpkMap()
+{
+    int tempmap[12][16]={
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+        0,1,1,14,14,14,0,14,14,14,0,1,1,1,1,0,
+        0,1,1,14,0,0,0,14,0,14,0,0,0,1,1,0,
+        0,1,0,14,14,14,14,14,0,14,14,14,0,1,1,0,
+        0,1,0,0,0,0,0,0,0,0,0,14,0,1,1,0,
+        0,1,14,14,14,14,0,14,14,14,0,14,0,1,1,0,
+        0,1,0,0,0,0,0,14,0,14,0,14,1,1,1,0,
+        0,1,1,14,0,14,14,14,0,14,0,14,1,1,1,0,
+        0,1,1,14,0,14,0,0,0,14,0,0,0,0,1,0,
+        0,1,1,14,0,14,14,14,0,14,14,1,1,1,1,0,
+        0,1,1,14,14,14,14,14,0,14,14,1,1,1,1,0,
+        0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+    };
+    for(int i=0;i<12;i++)
+    {
+        for(int j=0;j<16;j++)
+        {
+            map[7][i][j]=tempmap[i][j];
         }
     }
 }
@@ -388,25 +776,37 @@ void Dungeon::setCharacterPos(int floor,int target)
         if(findflag)
             break;
     }
-    if(i<11&&map[floor][i+1][j]==1)
+    if(!findflag)
+        return;
+    if(i<11&&((map[floor][i+1][j]==1||isDynamic(floor,i+1,j))
+            ||(map[floor][i+1][j]>=23&&map[floor][i+1][j]<=27)))
     {
-
+        if(map[floor][i+1][j]!=1)
+            map[floor][i+1][j]=1;
         x=i+1;
         y=j;
     }
-    else if(i>0&&map[floor][i-1][j]==1)
+    else if(i>0&&((map[floor][i-1][j]==1||isDynamic(floor,i-1,j))
+            ||(map[floor][i-1][j]>=23&&map[floor][i-1][j]<=27)))
     {
+        if(map[floor][i-1][j]!=1)
+            map[floor][i-1][j]=1;
         x=i-1;
         y=j;
     }
-    else if(j<15&&map[floor][i][j+1]==1)
+    else if(j<15&&((map[floor][i][j+1]==1||isDynamic(floor,i,j+1))
+            ||(map[floor][i][j+1]>=23&&map[floor][i][j+1]<=27)))
     {
-
+        if(map[floor][i][j+1]!=1)
+            map[floor][i][j+1]=1;
         x=i;
         y=j+1;
     }
-    else if(j>0&&map[floor][i][j-1]==1)
+    else if(j>0&&((map[floor][i][j-1]==1||isDynamic(floor,i,j-1))
+            ||(map[floor][i][j-1]>=23&&map[floor][i][j-1]<=27)))
     {
+        if(map[floor][i][j-1]!=1)
+            map[floor][i][j-1]=1;
         x=i;
         y=j-1;
     }
@@ -414,26 +814,45 @@ void Dungeon::setCharacterPos(int floor,int target)
     {
         x=y=0;
     }
+    if(target==6)
+        updateFogArea(floor,x,y);
 }
 
 void Dungeon::initialCharacterPos()
 {
     if(isPre)
     {
-        setCharacterPos(floor-2,15);
+        setCharacterPos(floor-2,7);
         isPre=false;
     }
     if(isNext)
     {
-        setCharacterPos(floor,14);
+        setCharacterPos(floor,6);
         isNext=false;
     }
 }
 void Dungeon::initialDugeon()
 {
-    Store=new StoreWidget(ptr_MianWindow);//StoreWidget只是一个类，要想有主窗口，类中必须自己定义一个
+    initialFogWidget();
+    initialMap();
+    Store=new StoreWidget(ptr_MianWindow);//类中如果不定义子窗口，则不能作为MianWindow的子窗口
     Store->setGeometry(292,192,256,352);
     Store->hide();
+
+    menu=new Menu(ptr_MianWindow);
+    menu->setGeometry(160,160,520,320);
+    menu->hide();
+
+    QFont fontLabel("Microsoft YaHei" ,12, 75);
+    QFont fontNum("Microsoft YaHei" ,10, 75);
+    NetMode_time=fac->CreateQLabel(ptr_MianWindow,640,20,200,40,"遭遇战倒计时:","color:white",fontLabel);
+    NetMode_secondes=fac->CreateQLabel(ptr_MianWindow,740,60,80,40,QString::number(CountDown),"color:red",fontNum);
+    NetMode_time->hide();
+    NetMode_secondes->hide();
+
+    help=new Help(ptr_MianWindow);
+    help->setGeometry(160,160,520,320);
+    help->hide();
 
     initialinfoWidget();
     initialFightWin();//希望显示在MainWidget之上的窗口，要在初始化MainWidget后再初始化
@@ -449,7 +868,23 @@ void Dungeon::initialDugeon()
     connect(Store->haveBuyTimer,SIGNAL(timeout()),this,SLOT(OpenStore()));
     connect(dynamicEffectTimer,SIGNAL(timeout()),this,SLOT(ShowdynamicEffect()));
 }
+void Dungeon::initialFogWidget()
+{
+    int BASIC_WIDTH=832/16;
+    int BASIC_HEIGHT=672/12;
 
+    for(int i=0;i<12;++i)
+    {
+        for(int j=0;j<16;++j)
+        {
+            FogWidget[i][j]=new QWidget(ptr_MianWindow);
+            FogWidget[i][j]->setGeometry(j*BASIC_WIDTH,i*BASIC_HEIGHT,BASIC_WIDTH,BASIC_HEIGHT);
+            FogWidget[i][j]->setAutoFillBackground(true);
+            FogWidget[i][j]->hide();
+        }
+    }
+
+}
 void Dungeon::initialinfoWidget()
 {
     infoWidget=new QWidget(ptr_MianWindow);
@@ -458,13 +893,9 @@ void Dungeon::initialinfoWidget()
     QFont fontName("Microsoft YaHei" ,10, 55);
     QString labelbg_style="border-image: url(:/interface/image/interface/labelbg.png);";
     QString CharacterPic_style="border-image: url(:/info/image/information/Character.png);";
-    QString yellowkey_style="border-image: url(:/info/image/information/yellowkey.png);";
-    QString purplekey_style="border-image: url(:/info/image/information/purplekey.png);";
+    QString Pickaxe_style="border-image: url(:/info/image/information/Pickaxe.png);";
+    QString Downstairs_style="border-image: url(:/info/image/information/Downstairs.png);";
     QString redkey_style="border-image: url(:/info/image/information/redkey.png);";
-    QString button_style="QPushButton{border-image:url(:/interface/image/interface/labelbg.png);color:white;border-radius:10px;}"
-                         "QPushButton:hover{border-image:url(:/interface/image/interface/PushButtonhoverbg.png); color: black;}"
-                         "QPushButton:pressed{border-image:url(:/interface/image/interface/PushButtonPressbg.png);}";
-
 
     QLabel *CharacterPic=fac->CreateQLabel(infoWidget,20,20,40,40,"",CharacterPic_style);
     QLabel *label_Name=fac->CreateQLabel(infoWidget,20,70,100,30,"人们叫他",labelbg_style,fontLabel,Qt::AlignLeft);
@@ -476,14 +907,11 @@ void Dungeon::initialinfoWidget()
     QLabel *label_def=fac->CreateQLabel(infoWidget,20,270,65,30,"防御",labelbg_style,fontLabel,Qt::AlignLeft);
     QLabel *label_score=fac->CreateQLabel(infoWidget,20,310,65,30,"金币",labelbg_style,fontLabel,Qt::AlignLeft);
     QLabel *label_exp=fac->CreateQLabel(infoWidget,20,190,65,30,"经验",labelbg_style,fontLabel,Qt::AlignLeft);
-    QLabel *label_yellowkey=fac->CreateQLabel(infoWidget,20,370,40,40,"",yellowkey_style);
-    QLabel *label_purplekey=fac->CreateQLabel(infoWidget,20,420,40,40,"",purplekey_style);
-    QLabel *label_redkey=fac->CreateQLabel(infoWidget,20,470,40,40,"",redkey_style);
+    QLabel *label_Pickaxe=fac->CreateQLabel(infoWidget,20,370,40,40,"",Pickaxe_style);
+    QLabel *label_Downstairs=fac->CreateQLabel(infoWidget,20,420,40,40,"",Downstairs_style);
     QLabel *label_floor1=fac->CreateQLabel(infoWidget,20,520,40,40,"第",labelbg_style,fontLabel);
     QLabel *label_floor2=fac->CreateQLabel(infoWidget,140,520,40,40,"层",labelbg_style,fontLabel);
 
-    ReturnMainMenu=fac->CreateQPushButton(infoWidget,140,580,120,30,"返回主菜单",button_style,fontLabel);
-    Restart=fac->CreateQPushButton(infoWidget,140,620,100,30,"重新开始",button_style,fontLabel);
 
     level=fac->CreateQLabel(infoWidget,80,20,40,40,QString::number(role.level),labelbg_style,fontNum);
     hp=fac->CreateQLabel(infoWidget,105,110,100,30,QString::number(role.hp),labelbg_style,fontNum);
@@ -492,15 +920,30 @@ void Dungeon::initialinfoWidget()
     def=fac->CreateQLabel(infoWidget,105,270,100,30,QString::number(role.def),labelbg_style,fontNum);
     score=fac->CreateQLabel(infoWidget,105,310,100,30,QString::number(role.scoreNum),labelbg_style,fontNum);
     exp=fac->CreateQLabel(infoWidget,105,190,100,30,QString::number(role.exp),labelbg_style,fontNum);
-    yellowkeyNum=fac->CreateQLabel(infoWidget,105,370,100,30,QString::number(role.yellowkey),labelbg_style,fontNum);
-    purplekeyNum=fac->CreateQLabel(infoWidget,105,420,100,30,QString::number(role.purplekey),labelbg_style,fontNum);
-    redkeyNum=fac->CreateQLabel(infoWidget,105,470,100,30,QString::number(role.redkey),labelbg_style,fontNum);
+    PickaxeNum=fac->CreateQLabel(infoWidget,105,370,100,30,QString::number(role.Pickaxe),labelbg_style,fontNum);
+    DownstairsNum=fac->CreateQLabel(infoWidget,105,420,100,30,QString::number(role.Downstairs),labelbg_style,fontNum);
     Floor=fac->CreateQLabel(infoWidget,80,520,40,40,QString::number(floor),labelbg_style,fontNum);
+    label_MyName=fac->CreateQLabel(infoWidget,20,580,100,30,"",labelbg_style,fontLabel,Qt::AlignLeft);
+    label_VS=fac->CreateQLabel(infoWidget,120,580,40,30,"VS",labelbg_style,fontLabel,Qt::AlignLeft);
+    label_CmptorName=fac->CreateQLabel(infoWidget,180,580,100,30,"",labelbg_style,fontLabel,Qt::AlignLeft);
+    label_MyPonit=fac->CreateQLabel(infoWidget,50,620,40,30,"0",labelbg_style,fontNum,Qt::AlignLeft);
+    label_split=fac->CreateQLabel(infoWidget,130,620,40,30,":",labelbg_style,fontLabel,Qt::AlignLeft);
+    label_CmptorPoint=fac->CreateQLabel(infoWidget,210,620,40,30,"0",labelbg_style,fontNum,Qt::AlignLeft);
+    label_MyName->hide();
+    label_VS->hide();
+    label_CmptorName->hide();
+    label_MyPonit->hide();
+    label_split->hide();
+    label_CmptorPoint->hide();
 
-    connect(ReturnMainMenu,SIGNAL(clicked()),this,SLOT(ReturnMainMenuPlay()));
-    connect(Restart,SIGNAL(clicked()),this,SLOT(RestartPlay()));
+    connect(menu->ReturnMainMenu,SIGNAL(clicked()),this,SLOT(ReturnMainMenuPlay()));
+    connect(menu->Restart,SIGNAL(clicked()),this,SLOT(RestartPlay()));
+    connect(menu->Continue,SIGNAL(clicked()),this,SLOT(ContinuePlay()));
+    connect(menu->ReturnRooms,SIGNAL(clicked()),this,SLOT(ReturnRoomsPlay()));
+    connect(menu->Help,SIGNAL(clicked()),this,SLOT(HelpPlay()));
+    connect(help->Return,SIGNAL(clicked()),this,SLOT(HelpReturnPlay()));
 
-    infoWidget->setMinimumSize(300,680);
+    infoWidget->setMinimumSize(300,672);
     infoWidget->setStyleSheet("color:white;border-image: url(:/interface/image/interface/infobg.png);");
     infoWidget->hide();
 }
@@ -508,50 +951,107 @@ void Dungeon::ReturnMainMenuPlay()//返回主菜单
 {
     infoWidget->hide();//隐藏状态界面
     hideDungeon();//隐藏地牢界面
+    hideFog();
+    menu->pauseEvent->setText("PAUSE");
+    menu->Restart->show();
+    menu->Continue->show();
+    menu->hide();
+    NetMode_time->hide();
+    NetMode_secondes->hide();
+    MyPonit=0;
+    CmptorPoint=0;
     surface->isok=false;
+    NetModeStart=false;
     music->InterfaceBGM->play();
     music->InterfaceBGMTimer->start(10);
     NameEdit->clear();
     surface->show();//开始界面显示后，主窗口大小还是不变
-    ptr_MianWindow->resize(840,680);//需要重新设置主窗口大小
+    ptr_MianWindow->resize(832,672);//需要重新设置主窗口大小
+    surface->resizeEvent(nullptr);
 
     surface->showMianMenu();
+    initialFogArr();
     initialMap();
+    Store->initialStoreDatas();
     updateStatusData();
 }
 void Dungeon::RestartPlay()//重新开始
 {
+    menu->hide();
+    initialFogArr();
     initialMap();
+    Store->initialStoreDatas();
     ShowDungeon();
+    ShowFog();
     updateStatusData();
 }
+void Dungeon::ContinuePlay()//继续游戏
+{
+    menu->hide();
+}
+void Dungeon::ReturnRoomsPlay()
+{
+    ReturnMainMenuPlay();
+    menu->hide();
+    if(surface->sign->roomWidget->owner_!=surface->sign->roomWidget->playerName)
+        surface->sign->roomWidget->startGameBtn->setText("准备");
+    surface->sign->roomWidget->show();
+}
+void Dungeon::HelpPlay()
+{
+    help->show();
+}
+void Dungeon::HelpReturnPlay()
+{
+    help->hide();
+}
+void Dungeon::ShowFog()
+{
+    for(int i=0;i<12;i++)
+    {
+        for(int j=0;j<16;j++)
+        {
+            QPalette *palette=new QPalette;
+            palette->setBrush(QPalette::Background,
+                    QBrush(QImage(":/Dungeon/image/Dungeon/fog.png").
+                           copy((FogArr[floor-1][i][j]/4)*54,(FogArr[floor-1][i][j]%4)*58,54,58)
+                                ));
+            FogWidget[i][j]->setPalette(*palette);
+            FogWidget[i][j]->show();
+        }
+    }
+}
+void Dungeon::hideFog()
+{
+    for(int i=0;i<12;i++)
+    {
+        for(int j=0;j<16;j++)
+        {
+            FogWidget[i][j]->hide();
+        }
+    }
+}
+
 void Dungeon::ShowDungeon()
 {
-    int BASIC_WIDTH=840/16;
-    int BASIC_HEIGHT=680/12;
+    int BASIC_WIDTH=832/16;
+    int BASIC_HEIGHT=672/12;
     if(surface->surfaceShow)
     {
         surface->hide();
-        gLayout_Map->removeWidget(surface);
+        //gLayout_Map->removeWidget(surface);
         surface->surfaceShow=false;
     }
 
-    if(isShow)
-    {
-        for(int i=0;i<12;i++)
-        {
-            for(int j=0;j<16;j++)
-            {
-                MazeWidget[i][j]->hide();
-            }
-        }
-    }
 
     People->setMinimumSize(BASIC_WIDTH,BASIC_HEIGHT);
     gLayout_Map->addWidget(People,x,y);
-    People->setStyleSheet(DungeonStytle[38][0]);
+    People->setStyleSheet(DungeonStytle[3][0]);
     People->show();//用就显示
-
+    if(floor==0)
+        floor=1;
+    else if(floor>8)
+        floor=7;
     for(int i=0;i<12;i++)
     {
         for(int j=0;j<16;j++)
@@ -561,7 +1061,6 @@ void Dungeon::ShowDungeon()
             MazeWidget[i][j]->setStyleSheet(DungeonStytle[map[floor-1][i][j]][0]);
         }
     }
-    isShow=true;
     dynamicEffectTimer->start(500);
 
     music->DungeonBGM->play();
@@ -577,7 +1076,6 @@ void Dungeon::hideDungeon()
         }
     }
     People->hide();
-    isShow=false;
     surface->Dungeonisok=false;
     dynamicEffectTimer->stop();
     music->DungeonBGM->stop();
@@ -609,16 +1107,243 @@ void Dungeon::EnterDungeon()
         Character_name->setText(NameEdit->text());
         CharacterName->setText(NameEdit->text());
         infoWidget->show();
+        menu->ReturnRooms->hide();
         ShowDungeon();
+        ShowFog();
         music->InterfaceBGM->stop();
         music->InterfaceBGMTimer->stop();
     }
 }
+void Dungeon::NetStart()
+{
+    NetModeStart=true;
+    floor=1;
+    MyPonit=0;
+    CmptorPoint=0;
+    label_MyPonit->setText(QString::number(MyPonit));
+    label_CmptorPoint->setText(QString::number(CmptorPoint));
+    menu->pauseEvent->setText("PAUSE");
+    menu->Restart->hide();
+    initialFogArr();
+    setCharacterPos(floor-1,6);
+    surface->button_NetPlay->hide();
+    surface->button_LocalDungeon->hide();
+    surface->button_Quit->hide();
+    surface->button_About->hide();
+    surface->sign->roomWidget->hide();
+    surface->Dungeonisok=true;
+    NetMode_time->show();
+    NetMode_secondes->show();
+    NetModeCountDownTimer=new QTimer;
+    connect(NetModeCountDownTimer,SIGNAL(timeout()),this,SLOT(NetModeCountDownRun()));
+    NetModeCountDownTimer->start(1000);
+    Character_name->setText(surface->sign->roomWidget->playerName);
+    CharacterName->setText(surface->sign->roomWidget->playerName);
+    infoWidget->show();
+    ShowDungeon();
+    ShowFog();
+    music->InterfaceBGM->stop();
+    music->InterfaceBGMTimer->stop();
+    NetStartTimer->stop();
+    initialpkMap();
+    competitor=new QWidget;
+    competitor->hide();
+}
+void Dungeon::NetModeCountDownRun()
+{
+    NetMode_secondes->setText(QString::number(--CountDown));
+    if(CountDown<=0)
+    {
+        CountDown=10;
+        surface->sign->roomWidget->chatRoom->pkRequest();
+        NetModeCountDownTimer->stop();
+    }
+}
+void Dungeon::pkStart()
+{
+    stopAllwork();//停止所有可能的动作
+    hideDungeon();//隐藏地牢界面
+    hideFog();
+    surface->Dungeonisok=true;
+    NetMode_time->hide();
+    NetMode_secondes->hide();
+    pre_floor=floor;
+    pre_x=x;
+    pre_y=y;
+    floor=8;
+    if(surface->sign->roomWidget->playerName==surface->sign->roomWidget->owner_)
+    {
+        x=1;
+        y=1;
+        surface->sign->roomWidget->chatRoom->cur_x=10;
+        surface->sign->roomWidget->chatRoom->cur_y=14;
+        gLayout_Map->addWidget(competitor,10,14);
+        competitor->setStyleSheet(DungeonStytle[3][0]);
+        competitor->show();
+    }
+    else
+    {
+        x=10;
+        y=14;
+        surface->sign->roomWidget->chatRoom->cur_x=1;
+        surface->sign->roomWidget->chatRoom->cur_y=1;
+        gLayout_Map->addWidget(competitor,1,1);
+        competitor->setStyleSheet(DungeonStytle[3][0]);
+        competitor->show();
+    }
+    surface->sign->roomWidget->chatRoom->udpkStatusRequest(role.hp,role.atk,role.def);
+    initialpkMap();
+    ShowDungeon();
+    pkStartTimer->stop();
+}
+void Dungeon::ReturnDungeon()
+{
+    competitor->hide();
+    floor=pre_floor;
+    x=pre_x;
+    y=pre_y;
+    infoWidget->show();
+    ShowDungeon();
+    ShowFog();
+    label_MyName->setText(surface->sign->roomWidget->chatRoom->playerName);
+    label_MyName->show();
+    label_VS->show();
+    label_CmptorName->setText(surface->sign->roomWidget->chatRoom->competitoName);
+    label_CmptorName->show();
+    if(!dogFall)
+    {
+        if(MyWin)
+            MyPonit++;
+        else
+            CmptorPoint++;
+    }
+    MyWin=false;
+    dogFall=false;
+    label_MyPonit->setText(QString::number(MyPonit));
+    label_MyPonit->show();
+    label_split->show();
+    label_CmptorPoint->setText(QString::number(CmptorPoint));
+    label_CmptorPoint->show();
+    if(MyPonit==2||CmptorPoint==2)
+    {
+        pkOverCall(MyPonit,CmptorPoint);
+        return;
+    }
+    NetMode_time->show();
+    NetMode_secondes->show();
+    NetModeCountDownTimer->start(1000);
+}
+void Dungeon::pkOverCall(int MyPoint,int CmptorPoint)
+{
+    menu->show();
+    QString WinerName;
+    if(MyPoint==2)
+        WinerName=surface->sign->roomWidget->chatRoom->playerName;
+    else if(CmptorPoint==2)
+        WinerName=surface->sign->roomWidget->chatRoom->competitoName;
+    menu->pauseEvent->setText("GAME OVER！"+WinerName+" WIN!");
+    menu->ReturnRooms->show();
+    menu->Restart->hide();
+    menu->Continue->hide();
+    NetModeCountDownTimer->stop();
+}
+void Dungeon::pkMapUpdate()
+{
+    int cur_x=surface->sign->roomWidget->chatRoom->cur_x;
+    int cur_y=surface->sign->roomWidget->chatRoom->cur_y;
+    int dir=surface->sign->roomWidget->chatRoom->dir;
+    switch(dir)
+    {
+    case 0://up
+    {
+        if(cur_x>0)
+        {
+            cur_x-=1;
+            surface->sign->roomWidget->chatRoom->cur_x=cur_x;
+            if(map[floor-1][cur_x][cur_y]!=0)
+            {
+                if(map[floor-1][cur_x][cur_y]==14)
+                    music->SoundPlay(0);
+                map[floor-1][cur_x][cur_y]=1;
+                MazeWidget[cur_x][cur_y]->setStyleSheet(DungeonStytle[1][0]);
+                gLayout_Map->addWidget(competitor,cur_x,cur_y);
+                competitor->setStyleSheet(DungeonStytle[2][0]);
+            }
+        }
+        else
+            break;
+    }
+        break;
+    case 1://down
+    {
+        if(cur_x<11)
+        {
+            cur_x+=1;
+            surface->sign->roomWidget->chatRoom->cur_x=cur_x;
+            if(map[floor-1][cur_x][cur_y]!=0)
+            {
+                if(map[floor-1][cur_x][cur_y]==14)
+                    music->SoundPlay(0);
+                map[floor-1][cur_x][cur_y]=1;
+                MazeWidget[cur_x][cur_y]->setStyleSheet(DungeonStytle[1][0]);
+                gLayout_Map->addWidget(competitor,cur_x,cur_y);
+                competitor->setStyleSheet(DungeonStytle[3][0]);
+            }
+        }
+        else
+            break;
+    }
+        break;
+    case 2://left
+    {
+        if(cur_y>0)
+        {
+            cur_y-=1;
+            surface->sign->roomWidget->chatRoom->cur_y=cur_y;
+            if(map[floor-1][cur_x][cur_y]!=0)
+            {
+                if(map[floor-1][cur_x][cur_y]==14)
+                    music->SoundPlay(0);
+                map[floor-1][cur_x][cur_y]=1;
+                MazeWidget[cur_x][cur_y]->setStyleSheet(DungeonStytle[1][0]);
+                gLayout_Map->addWidget(competitor,cur_x,cur_y);
+                competitor->setStyleSheet(DungeonStytle[4][moveNum++%4]);
+            }
+        }
+        else
+            break;
+    }
+        break;
+    case 3://right
+    {
+        if(cur_y<15)
+        {
+            cur_y+=1;
+            surface->sign->roomWidget->chatRoom->cur_y=cur_y;
+            if(map[floor-1][cur_x][cur_y]!=0)
+            {
+                if(map[floor-1][cur_x][cur_y]==14)
+                    music->SoundPlay(0);
+                map[floor-1][cur_x][cur_y]=1;
+                MazeWidget[cur_x][cur_y]->setStyleSheet(DungeonStytle[1][0]);
+                gLayout_Map->addWidget(competitor,cur_x,cur_y);
+                competitor->setStyleSheet(DungeonStytle[5][moveNum++%4]);
+            }
+        }
+        else
+            break;
+    }
+        break;
+    }
+
+    pkMapUdTimer->stop();
+}
+
 void Dungeon::initialGetitemWin()
 {
     //显示获得物品信息
     QFont font("Microsoft YaHei" ,12, 75);
-    GetitemsShow=fac->CreateQLabel(ptr_MianWindow,220,340,400,50,"","color:white;background-color:black;",font);
+    GetitemsShow=fac->CreateQLabel(ptr_MianWindow,120,340,600,50,"","color:orangered;background-color:transparent;",font);
     GetitemsShow->hide();
 }
 void Dungeon::initialFightWin()
@@ -626,28 +1351,28 @@ void Dungeon::initialFightWin()
     QFont font("Microsoft YaHei" ,12, 75);
     QFont fontName("Microsoft YaHei" ,8, 55);
     QFont font_VS("Microsoft YaHei" ,24, 75);
-    QString FightWidget_style="color:white;background-color:black;";
+    QString FightWidget_style="color:orangered;background-color:black;";
     QString Character_pic_style="border-image: url(:/info/image/information/Character.png);";
     FightWidget=new QWidget(ptr_MianWindow);
     FightWidget->setStyleSheet(FightWidget_style);
     FightWidget->setGeometry(160,160,520,320);
 
-    Monster_pic=fac->CreateQLabel(FightWidget,25,60,40,40,"",FightWidget_style,font);
-    Monster_name=fac->CreateQLabel(FightWidget,10,160,100,40,"",FightWidget_style,font);
+    Monster_pic=fac->CreateQLabel(FightWidget,25,60,40,40,"",FightWidget_style,fontName);
+    Monster_name=fac->CreateQLabel(FightWidget,10,160,100,40,"",FightWidget_style,fontName);
     Monster_hpText=fac->CreateQLabel(FightWidget,105,20,100,40,"生命值",FightWidget_style,font);
     Monster_hp=fac->CreateQLabel(FightWidget,105,60,100,40,"",FightWidget_style,font);
     Monster_atkText=fac->CreateQLabel(FightWidget,105,120,100,40,"攻击力",FightWidget_style,font);
-    Monster_atk=fac->CreateQLabel(FightWidget,105,160,100,400,"",FightWidget_style,font);
+    Monster_atk=fac->CreateQLabel(FightWidget,105,160,100,40,"",FightWidget_style,font);
     Monster_defText=fac->CreateQLabel(FightWidget,105,220,100,40,"防御力",FightWidget_style,font);
     Monster_def=fac->CreateQLabel(FightWidget,105,260,100,40,"",FightWidget_style,font);
 
 
     Character_pic=fac->CreateQLabel(FightWidget,445,60,40,40,"",Character_pic_style,fontName);
-    Character_name=fac->CreateQLabel(FightWidget,400,160,120,40,role.name,FightWidget_style,font);
+    Character_name=fac->CreateQLabel(FightWidget,400,160,120,40,role.name,FightWidget_style,fontName);
     Character_hpText=fac->CreateQLabel(FightWidget,335,20,100,40,"生命值",FightWidget_style,font);
     Character_hp=fac->CreateQLabel(FightWidget,335,60,100,40,"",FightWidget_style,font);
     Character_atkText=fac->CreateQLabel(FightWidget,335,120,100,40,"攻击力",FightWidget_style,font);
-    Character_atk=fac->CreateQLabel(FightWidget,335,160,60,40,"",FightWidget_style,font);
+    Character_atk=fac->CreateQLabel(FightWidget,335,160,100,40,"",FightWidget_style,font);
     Character_defText=fac->CreateQLabel(FightWidget,335,220,100,40,"防御力",FightWidget_style,font);
     Character_def=fac->CreateQLabel(FightWidget,335,260,100,40,"",FightWidget_style,font);
 
@@ -660,8 +1385,9 @@ void Dungeon::updateStatusData()
     if(role.exp>=100*role.level)
     {
         MAX_HP+=role.level*50;
-        role.hp+=role.level*50;
-        role.mp+=role.level*5;
+        role.hp=MAX_HP;
+        MAX_MP+=role.level*5;
+        role.mp=MAX_MP;
         role.atk+=3;
         role.def+=2;
         role.level+=1;
@@ -677,9 +1403,8 @@ void Dungeon::updateStatusData()
     mp->setText(QString::number(role.mp));
     atk->setText(QString::number(role.atk));
     def->setText(QString::number(role.def));
-    yellowkeyNum->setText(QString::number(role.yellowkey));
-    purplekeyNum->setText(QString::number(role.purplekey));
-    redkeyNum->setText(QString::number(role.redkey));
+    PickaxeNum->setText(QString::number(role.Pickaxe));
+    DownstairsNum->setText(QString::number(role.Downstairs));
     Floor->setText(QString::number(floor));
 }
 void Dungeon::GetitemWinshow()
@@ -690,13 +1415,15 @@ void Dungeon::GetitemWinshow()
         {
         case -1:
         {
-            GetitemsShow->setText("打不过");
+            GetitemsShow->setText(QString::fromWCharArray(L"你因死亡失去 ") + QString::number(20*deadTimes) + QString::fromWCharArray(L" 生命上限 ")
+                            + QString::number(5*deadTimes)+ QString::fromWCharArray(L" 魔法上限 ")
+                            + QString::number(40*deadTimes)+ QString::fromWCharArray(L" 金币 "));
             GetitemsShow->show();
         }
             break;
         case -2:
         {
-            GetitemsShow->setText("怪物防御太高，你需要提高攻击力");
+            GetitemsShow->setText(QString::fromWCharArray(L"获得经验值 ") + QString::number(enemy[MonsterNum].exp) + QString::fromWCharArray(L" 金币 ") + QString::number(enemy[MonsterNum].gold));
             GetitemsShow->show();
         }
             break;
@@ -708,7 +1435,7 @@ void Dungeon::GetitemWinshow()
             break;
         case 0:
         {
-            GetitemsShow->setText("你打不过这只怪物只好遁地逃走");
+            GetitemsShow->setText("你们谁也干不掉谁！");
             GetitemsShow->show();
         }
             break;
@@ -718,45 +1445,57 @@ void Dungeon::GetitemWinshow()
             GetitemsShow->show();
         }
             break;
-        case 8:
+        case 2:
+        {
+            GetitemsShow->setText("You Win！");
+            GetitemsShow->show();
+        }
+            break;
+        case 3:
+        {
+            GetitemsShow->setText("You Lost！");
+            GetitemsShow->show();
+        }
+            break;
+        case 23:
         {
             GetitemsShow->setText("获得小回血蘑菇!生命值加 100");
             GetitemsShow->show();
         }
             break;
-        case 9:
+        case 24:
         {
-            GetitemsShow->setText("获得回蓝蘑菇!魔法值加 50");
+            GetitemsShow->setText("获得回蓝蘑菇!魔法值加 20");
             GetitemsShow->show();
         }
             break;
-        case 10:
+        case 25:
         {
-            GetitemsShow->setText("获得大回血蘑菇！增加100点生命值上限！");
+            GetitemsShow->setText("获得大回血蘑菇！增加50点生命值上限！");
             GetitemsShow->show();
         }
             break;
-        case 11:
-        {
-            GetitemsShow->setText("突然从箱子里跳出一只绿鸭子并冲向你，你不得不与之战斗！！！");
-            GetitemsShow->show();
-        }
-            break;
-        case 12:
-        {
-            GetitemsShow->setText("突然从箱子里跳出一只红鸭子并飞向你，你不得不与之战斗！！！");
-            GetitemsShow->show();
-        }
+//        case 11:
+//        {
+//            GetitemsShow->setText("突然从箱子里跳出一只绿鸭子并冲向你，你不得不与之战斗！！！");
+//            GetitemsShow->show();
+//        }
+//            break;
+//        case 12:
+//        {
+//            GetitemsShow->setText("突然从箱子里跳出一只红鸭子并飞向你，你不得不与之战斗！！！");
+//            GetitemsShow->show();
+//        }
         case 16:
         {
-            GetitemsShow->setText("打不开门, 缺少红钥匙！");
+            GetitemsShow->setText("不能使用破墙镐，魔法值低于20！");
             GetitemsShow->show();
         }
             break;
         case 17:
         {
 
-            GetitemsShow->setText("打不开门, 缺少黄钥匙！");
+            GetitemsShow->setText("不能使用下楼器，魔法值低于40！");
             GetitemsShow->show();
 
         }
@@ -767,55 +1506,49 @@ void Dungeon::GetitemWinshow()
             GetitemsShow->show();
         }
             break;
-        case 19:
-        {
-            GetitemsShow->setText("获得一把红钥匙");
-            GetitemsShow->show();
-        }
-            break;
-        case 20:
-        {
-            GetitemsShow->setText("获得一把黄钥匙");
-            GetitemsShow->show();
-        }
-            break;
-        case 21:
-        {
-            GetitemsShow->setText("获得一把紫钥匙");
-            GetitemsShow->show();
-        }
-            break;
-        case 22:
+        case 26:
         {
             GetitemsShow->setText("获得绿龟壳，防御力加 3");
             GetitemsShow->show();
         }
             break;
-        case 23:
+        case 27:
         {
             GetitemsShow->setText("获得红龟壳，攻击力加 2");
             GetitemsShow->show();
         }
             break;
-        case 24:
+        case 28:
         {
-            GetitemsShow->setText("获得铁剑，攻击力加 10");
+            GetitemsShow->setText("获得铁剑，攻击力加 8");
             GetitemsShow->show();
         }
             break;//一定要break;不然会接着执行后面的语句
-        case 28:
-        {
-            GetitemsShow->setText("获得花剑，攻击力加 25");
-            GetitemsShow->show();
-        }
-            break;
         case 29:
         {
-            GetitemsShow->setText("获得金剑，攻击力加 36");
+            GetitemsShow->setText("获得花剑，攻击力加 16");
             GetitemsShow->show();
         }
             break;
-        case 35:
+        case 30:
+        {
+            GetitemsShow->setText("获得金剑，攻击力加 24");
+            GetitemsShow->show();
+        }
+            break;
+        case 31:
+        {
+            GetitemsShow->setText("获得一把破墙镐");
+            GetitemsShow->show();
+        }
+            break;
+        case 32:
+        {
+            GetitemsShow->setText("发现一个下楼器");
+            GetitemsShow->show();
+        }
+            break;
+        case 12:
         {
             GetitemsShow->setText("你没有足够的金币");
             GetitemsShow->show();
@@ -824,7 +1557,7 @@ void Dungeon::GetitemWinshow()
         }
         GetitemNum++;
     }
-    else if(GetitemNum<=4)//控制显示时间
+    else if(GetitemNum<=11)//控制显示时间
     {
         GetitemNum++;
     }
@@ -835,47 +1568,219 @@ void Dungeon::GetitemWinshow()
         GetitemsShow->hide();
     }
 }
+void Dungeon::deadCall()
+{
+    deadTimes++;
+    MAX_HP-=(20*deadTimes);
+    MAX_HP=MAX_HP<0?0:MAX_HP;
+    if(MAX_HP==0)
+        GameOverCall();
+    MAX_MP-=(5*deadTimes);
+    MAX_MP=MAX_MP<0?0:MAX_MP;
+    role.hp=MAX_HP/deadTimes;
+    role.mp=MAX_MP;
+    role.exp=0;
+    role.scoreNum-=(40*deadTimes);
+    if(role.scoreNum<0)
+        role.scoreNum=0;
+    itemNum=-1;
+    GetitemTimer->start(100);
+    isDead=true;
+    music->SoundPlay(5);
+    People->setStyleSheet("border-image: url(:/Dungeon/image/Dungeon/dead.png);");
+}
+void Dungeon::GameOverCall()
+{
+    surface->sign->roomWidget->chatRoom->GameOverRequest();
+    menu->show();
+    menu->pauseEvent->setText("GAME OVER！You Lost!");
+    menu->Continue->hide();
+    if(NetModeStart)
+    {
+        menu->Restart->hide();
+        menu->ReturnRooms->show();
+        NetModeCountDownTimer->stop();
+    }
+}
+void Dungeon::competitorGameOverCall()
+{
+    menu->show();
+    menu->pauseEvent->setText("对方多次阵亡...You Win!");
+    menu->ReturnRooms->show();
+    menu->Restart->hide();
+    menu->Continue->hide();
+    NetModeCountDownTimer->stop();
+    CmptorGameOverCallTimer->stop();
+}
 void Dungeon::FightWinshow()//战斗界面
 {
+    if(floor==8)
+    {
+        if(MonsterNum!=0)
+        {
+            MonsterNum=0;
+            FightTimer->stop();
+            return;
+        }
+        pkMapFightWinShow();
+
+    }
+    else
+    {
+        if (fight_period_it == 0)
+        {
+            isFighting=true;
+            //准备战斗界面
+            Monster_hp->setText(QString::number(enemy[MonsterNum].hp));
+            Monster_atk->setText(QString::number(enemy[MonsterNum].atk));
+            Monster_def->setText(QString::number(enemy[MonsterNum].def));
+            Character_hp->setText(QString::number(role.hp));
+            Character_atk->setText(QString::number(role.atk));
+            Character_def->setText(QString::number(role.def));
+            FightWidget->show();
+            Monster_pic->setStyleSheet(MonsterPic[MonsterNum]);
+            Monster_name->setText(enemy[MonsterNum].name);
+            fight_period_it = 1;
+            music->FightSound->play();
+            music->FightSoundTimer->start(100);
+        }//fight_period_it 代表对战次数，奇数次计算人物对怪物造成的伤害，偶数次计算怪物对人造成的伤害
+        else if (fight_period_it % 2 == 1 && fight_end_it == 0)
+        {
+            int damage=role.atk - enemy[MonsterNum].def;
+            if (enemy[MonsterNum].hp - (damage>0?damage:0) * (fight_period_it / 2 + 1) <= 0)
+            {
+                Monster_hp->setText(QString::number(0));//fight_period_it / 2 + 1 代表人物对怪物攻击的累计次数
+                fight_end_it = 1;
+            }
+            else
+            {
+                Monster_hp->setText(QString::number(enemy[MonsterNum].hp - (damage>0?damage:0) * (fight_period_it / 2 + 1)));
+                fight_period_it++;
+            }
+
+        }
+        else if (fight_period_it % 2 == 0 && fight_end_it == 0)
+        {
+            int damage=enemy[MonsterNum].atk - role.def;
+            if(role.hp - (damage>0?damage:0) * (fight_period_it / 2)<=0)
+            {
+                Character_hp->setText(QString::number(0));
+                fight_end_it = 1;
+            }
+            else
+            {
+                if(enemy[MonsterNum].atk > role.def)
+                    Character_hp->setText(QString::number(role.hp - (damage>0?damage:0) * (fight_period_it / 2)));
+                fight_period_it++;
+            }
+        }
+        else
+        {
+            if (fight_end_it <= 2)//可以控制界面存在时长
+            {
+                fight_end_it++;
+            }
+            else if(fight_end_it == 3)
+            {
+                //结算战斗结果
+                int damage = calc_damage(MonsterNum);
+                if(damage==-1||damage<0||role.hp-damage<=0)
+                    deadCall();
+                else
+                {
+                    role.hp -= damage;
+                    role.scoreNum += enemy[MonsterNum].gold;
+                    role.exp += enemy[MonsterNum].exp;
+                    itemNum=-2;
+                    GetitemTimer->start(100);
+                }
+                //隐藏战斗界面
+                FightWidget->hide();
+                music->FightSound->stop();
+                music->FightSoundTimer->stop();
+                updateStatusData();//更新战斗结果
+                fight_end_it++;
+            }
+            else if (fight_end_it <= 5)//可以控制界面存在时长
+            {
+                fight_end_it++;
+            }
+            else //fight_end_it =6 的时候,战斗状态信息栏才隐藏
+            {
+                FightTimer->stop();
+                if(!isDead)
+                    Move();
+                isFighting=false;
+                fight_end_it = 0;
+                fight_period_it = 0;
+                MonsterNum = 0;
+                isDead=false;
+            }
+        }
+    }
+}
+void Dungeon::stopAllwork()
+{
+    fight_end_it = 0;
+    fight_period_it = 0;
+    FightTimer->stop();
+    FightWidget->hide();
+    music->FightSound->stop();
+    music->FightSoundTimer->stop();
+    isFighting=false;
+}
+void Dungeon::pkMapFightWinShow()
+{
+    int cmptor_hp=surface->sign->roomWidget->chatRoom->hp;
+    int cmptor_atk=surface->sign->roomWidget->chatRoom->atk;
+    int cmptor_def=surface->sign->roomWidget->chatRoom->def;
     if (fight_period_it == 0)
     {
         isFighting=true;
         //准备战斗界面
-        Monster_hp->setText(QString::number(enemy[MonsterNum].hp));
-        Monster_atk->setText(QString::number(enemy[MonsterNum].atk));
-        Monster_def->setText(QString::number(enemy[MonsterNum].def));
+        Monster_hp->setText(QString::number(cmptor_hp));
+        Monster_atk->setText(QString::number(cmptor_atk));
+        Monster_def->setText(QString::number(cmptor_def));
         Character_hp->setText(QString::number(role.hp));
         Character_atk->setText(QString::number(role.atk));
         Character_def->setText(QString::number(role.def));
         FightWidget->show();
-        Monster_pic->setStyleSheet(MonsterPic[MonsterNum]);
-        Monster_name->setText(enemy[MonsterNum].name);
+        QString Character_pic_style="border-image: url(:/info/image/information/Character.png);";
+        Monster_pic->setStyleSheet(Character_pic_style);
+        Monster_name->setText(surface->sign->roomWidget->chatRoom->competitoName);
         fight_period_it = 1;
-
-        music->DungeonSoundList->setCurrentIndex(4);
-        music->DungeonSound->play();
-    }//fight_period_it 代表对战次数，奇数次计算任务对怪物造成的伤害，偶数次计算怪物对人造成的伤害
+        music->FightSound->play();
+        music->FightSoundTimer->start(100);
+    }//fight_period_it 代表对战次数，奇数次计算人物对怪物造成的伤害，偶数次计算怪物对人造成的伤害
     else if (fight_period_it % 2 == 1 && fight_end_it == 0)
     {
-        if (enemy[MonsterNum].hp - (role.atk - enemy[MonsterNum].def) * (fight_period_it / 2 + 1) <= 0)
+        int damage=role.atk - cmptor_def;
+        if (cmptor_hp - (damage>0?damage:0) * (fight_period_it / 2 + 1) <= 0)
         {
             Monster_hp->setText(QString::number(0));//fight_period_it / 2 + 1 代表人物对怪物攻击的累计次数
             fight_end_it = 1;
         }
         else
         {
-            Monster_hp->setText(QString::number(enemy[MonsterNum].hp - (role.atk - enemy[MonsterNum].def) * (fight_period_it / 2 + 1)));
+            Monster_hp->setText(QString::number(cmptor_hp - (damage>0?damage:0) * (fight_period_it / 2 + 1)));
             fight_period_it++;
         }
+
     }
     else if (fight_period_it % 2 == 0 && fight_end_it == 0)
     {
-        if (enemy[MonsterNum].atk > role.def)
+        int damage=cmptor_atk - role.def;
+        if(role.hp - (damage>0?damage:0) * (fight_period_it / 2)<=0)
         {
-            Character_hp->setText(QString::number(role.hp - (enemy[MonsterNum].atk - role.def) * (fight_period_it / 2)));
-            //fight_period_it / 2 代表怪物对人物的攻击累计次数
+            Character_hp->setText(QString::number(0));
+            fight_end_it = 1;
         }
-        fight_period_it++;
+        else
+        {
+            if(cmptor_atk > role.def)
+                Character_hp->setText(QString::number(role.hp - (damage>0?damage:0) * (fight_period_it / 2)));
+            fight_period_it++;
+        }
     }
     else
     {
@@ -885,17 +1790,59 @@ void Dungeon::FightWinshow()//战斗界面
         }
         else if(fight_end_it == 3)
         {
-            //结算战斗结果
-            int damage = calc_damage(MonsterNum);
-            role.hp -= damage;
-            role.scoreNum += enemy[MonsterNum].gold;
-            role.exp += enemy[MonsterNum].exp;
+            if(cmptor_hp==role.hp&&cmptor_atk==role.atk&&cmptor_def==role.def)
+            {
+                dogFall=true;
+                itemNum=0;
+                GetitemTimer->start(100);
+            }
+            else
+            {
+                //结算战斗结果
+                int damage;
+                if (role.atk <= cmptor_def)
+                {
+                    if (cmptor_atk > role.def)
+                        damage=-1;
+                    else
+                        damage=-2;
+                }
+                else
+                {
+                    if (cmptor_atk > role.def)
+                    {
+                        int atk_times = (cmptor_hp - 1) / (role.atk - cmptor_def);//怪物攻击的次数
+                        damage=atk_times * (cmptor_atk - role.def);//造成的伤害
+                    }
+                    else
+                    {
+                        damage=0;//怪物破不了我们的防，造成的伤害为0
+                    }
+                }
+
+                if(damage==-1||damage<0||role.hp-damage<=0)
+                {
+                    MyWin=false;
+                    itemNum=3;
+                    GetitemTimer->start(100);
+                }
+                else if(damage==-2)
+                {
+                    dogFall=true;
+                    itemNum=0;
+                    GetitemTimer->start(100);
+                }
+                else
+                {
+                    MyWin=true;
+                    itemNum=2;
+                    GetitemTimer->start(100);
+                }
+            }
             //隐藏战斗界面
             FightWidget->hide();
-            GetitemsShow->setText(QString::fromWCharArray(L"获得经验值 ") + QString::number(enemy[MonsterNum].exp) + QString::fromWCharArray(L" 金币 ") + QString::number(enemy[MonsterNum].gold));
-            GetitemsShow->show();
-            music->DungeonSound->stop();
-            updateStatusData();//更新战斗结果
+            music->FightSound->stop();
+            music->FightSoundTimer->stop();
             fight_end_it++;
         }
         else if (fight_end_it <= 5)//可以控制界面存在时长
@@ -905,28 +1852,22 @@ void Dungeon::FightWinshow()//战斗界面
         else //fight_end_it =6 的时候,战斗状态信息栏才隐藏
         {
             FightTimer->stop();
-            GetitemsShow->hide();
-            Move();
             isFighting=false;
             fight_end_it = 0;
             fight_period_it = 0;
             MonsterNum = 0;
+            ReturnDungeon();
         }
     }
 }
 bool Dungeon::isStatic(int num)//静态贴图
 {
-    return num==0||num==1||(num>=6&&num<=10)||(num>=14&&num<=24)||(num>=28&&num<=38);
+    return (num>=0&&num<=3)||(num>=6&&num<=13)||(num>=23&&num<=32);
 }
 
-bool Dungeon::isDynamic(int i,int j)
+bool Dungeon::isDynamic(int floor,int i,int j)
 {
-    if(map[floor-1][i][j]==2||map[floor-1][i][j]==3||map[floor-1][i][j]==4||
-            map[floor-1][i][j]==5||map[floor-1][i][j]==11||map[floor-1][i][j]==12||
-            map[floor-1][i][j]==25||map[floor-1][i][j]==26||map[floor-1][i][j]==27)
-        return true;
-    else
-        return false;
+    return map[floor][i][j]>=14&&map[floor][i][j]<=22;
 }
 void Dungeon::Move()
 {
@@ -938,7 +1879,7 @@ void Dungeon::Move()
         map[floor-1][x][y]=1;
         MazeWidget[x][y]->setStyleSheet(DungeonStytle[1][0]);
         gLayout_Map->addWidget(People,x,y);
-        People->setStyleSheet(DungeonStytle[37][0]);
+        People->setStyleSheet(DungeonStytle[2][0]);
     }
         break;
     case 1://down
@@ -947,7 +1888,7 @@ void Dungeon::Move()
         map[floor-1][x][y]=1;
         MazeWidget[x][y]->setStyleSheet(DungeonStytle[1][0]);
         gLayout_Map->addWidget(People,x,y);
-        People->setStyleSheet(DungeonStytle[38][0]);
+        People->setStyleSheet(DungeonStytle[3][0]);
     }
         break;
     case 2://left
@@ -956,7 +1897,7 @@ void Dungeon::Move()
         map[floor-1][x][y]=1;
         MazeWidget[x][y]->setStyleSheet(DungeonStytle[1][0]);
         gLayout_Map->addWidget(People,x,y);
-        People->setStyleSheet(DungeonStytle[39][moveNum%4]);
+        People->setStyleSheet(DungeonStytle[4][moveNum%4]);
     }
         break;
     case 3://right
@@ -965,11 +1906,13 @@ void Dungeon::Move()
         map[floor-1][x][y]=1;
         MazeWidget[x][y]->setStyleSheet(DungeonStytle[1][0]);
         gLayout_Map->addWidget(People,x,y);
-        People->setStyleSheet(DungeonStytle[40][moveNum%4]);
+        People->setStyleSheet(DungeonStytle[5][moveNum%4]);
     }
         break;
     }
     moveNum++;
+    if(floor<8)
+        updateFogArea(floor-1,x,y);
 }
 void Dungeon::ShowdynamicEffect()
 {
@@ -981,7 +1924,7 @@ void Dungeon::ShowdynamicEffect()
     {
         for(int j=0;j<16;j++)
         {
-            if(isDynamic(i,j))
+            if(isDynamic(floor-1,i,j))
             {
                 MazeWidget[i][j]->setStyleSheet(DungeonStytle[map[floor-1][i][j]][display_it]);
             }
@@ -997,7 +1940,7 @@ void Dungeon::OpenStore()
 {
     if(role.scoreNum-Store->Currstore_price<0)//金币不够，不能购买
     {
-        itemNum=35;//提示玩家
+        itemNum=12;//提示玩家
         GetitemTimer->start(100);
         Store->haveBuyTimer->stop();
     }
@@ -1071,6 +2014,18 @@ void Dungeon::changeHP(int num)
         role.hp+=num;
     }
 }
+void Dungeon::changeMP(int num)
+{
+    if(role.mp+num>=MAX_MP)
+    {
+        role.mp=MAX_MP;
+    }
+    else
+    {
+        role.mp+=num;
+    }
+}
+
 void Dungeon::QuestionBox(int num)
 {
     int temp1=0;
@@ -1101,12 +2056,13 @@ void Dungeon::QuestionBox(int num)
     message.setWindowIcon(QIcon(":/info/image/information/提示.ico"));
     if (message.exec()==QMessageBox::Yes)
     {
-        int Num=rand()%5+8;
+        //int Num=rand()%5+23;
+        int Num=26;
         switch(Num)
         {
-        case 8:
+        case 23:
         {
-            itemNum=8;
+            itemNum=23;
             GetitemTimer->start(100);
             changeHP(100);
             updateStatusData();
@@ -1115,20 +2071,20 @@ void Dungeon::QuestionBox(int num)
             return;
         }
             break;
-        case 9:
+        case 24:
         {
-            itemNum=9;
+            itemNum=24;
             GetitemTimer->start(100);
-            role.mp+=50;
+            changeMP(20);
             updateStatusData();
             map[floor-1][temp1][temp2]=1;
             MazeWidget[temp1][temp2]->setStyleSheet(DungeonStytle[1][0]);
             return;
         }
             break;
-        case 10:
+        case 25:
         {
-            itemNum=10;
+            itemNum=25;
             GetitemTimer->start(100);
             MAX_HP+=100;
             changeHP(100);
@@ -1138,47 +2094,47 @@ void Dungeon::QuestionBox(int num)
             return;
         }
             break;
-        case 11:
+        case 26:
         {
             QMessageBox mes(QMessageBox::NoIcon, "你打开了箱子", "突然从箱子里跳出一只绿鸭子并冲向你，你不得不与之战斗！！！");
             mes.setWindowIcon(QIcon(":/info/image/information/提示.ico"));
             mes.setIconPixmap(QPixmap(":/info/image/information/greenDuck.png"));
             mes.exec();
 
-            if(pk(enemy[2])==-1||pk(enemy[2])==-2||pk(enemy[2])==1)
+            if(pk(enemy[2])==-2)
             {
                 itemNum=0;
                 GetitemTimer->start(100);
-                map[floor-1][temp1][temp2]=11;
-                MazeWidget[temp1][temp2]->setStyleSheet(DungeonStytle[11][0]);
+                map[floor-1][temp1][temp2]=18;
+                MazeWidget[temp1][temp2]->setStyleSheet(DungeonStytle[18][0]);
             }
             else
             {
                 MonsterNum=2;
-                FightTimer->start(100);
+                FightTimer->start(50);
                 moveDirection=num;
             }
             return;
         }
             break;
-        case 12:
+        case 27:
         {
             QMessageBox mes(QMessageBox::NoIcon, "你打开了箱子", "突然从箱子里跳出一只红鸭子并飞向你，你不得不与之战斗！！！");
             mes.setWindowIcon(QIcon(":/info/image/information/提示.ico"));
             mes.setIconPixmap(QPixmap(":/info/image/information/flyDuck.png"));
             mes.exec();
 
-            if(pk(enemy[3])==-1||pk(enemy[3])==-2||pk(enemy[3])==1)
+            if(pk(enemy[3])==-2)
             {
                 itemNum=0;
                 GetitemTimer->start(100);
-                map[floor-1][temp1][temp2]=12;
-                MazeWidget[temp1][temp2]->setStyleSheet(DungeonStytle[12][0]);
+                map[floor-1][temp1][temp2]=19;
+                MazeWidget[temp1][temp2]->setStyleSheet(DungeonStytle[19][0]);
             }
             else
             {
                 MonsterNum=3;
-                FightTimer->start(100);
+                FightTimer->start(50);
                 moveDirection=num;
             }
             return;
@@ -1198,80 +2154,73 @@ void Dungeon::items(int _itemNum, int _moveDirection)
     int *tempNum=nullptr;
     switch(_itemNum)
     {
-    case 8:
+    case 23:
     {
         changeHP(100);
         hp->setText(QString::number(role.hp));
-        music->SoundPlay(5);
+        music->SoundPlay(4);
     }
         break;
-    case 9:
+    case 24:
     {
-        role.mp+=50;
+        changeMP(20);
         mp->setText(QString::number(role.mp));
-        music->SoundPlay(5);
+        music->SoundPlay(4);
     }
         break;
-    case 10:
+    case 25:
     {
-        MAX_HP+=100;
-        changeHP(100);
+        MAX_HP+=50;
+        changeHP(50);
         hp->setText(QString::number(role.hp));
-        music->SoundPlay(5);
+        music->SoundPlay(4);
     }
         break;
-    case 19:
+    case 31:
     {
-        target=redkeyNum;
-        tempNum=&(role.redkey);
+        target=PickaxeNum;
+        tempNum=&(role.Pickaxe);
         music->SoundPlay(3);
     }
         break;
-    case 20:
+    case 32:
     {
-        target=yellowkeyNum;
-        tempNum=&(role.yellowkey);
+        target=DownstairsNum;
+        tempNum=&(role.Downstairs);
         music->SoundPlay(3);
     }
         break;
-    case 21:
-    {
-        target=purplekeyNum;
-        tempNum=&(role.purplekey);
-        music->SoundPlay(3);
-    }
-        break;
-    case 22:
+    case 26:
     {
         role.def+=3;
         def->setText(QString::number(role.def));
         music->SoundPlay(3);
     }
         break;
-    case 23:
+    case 27:
     {
         role.atk+=2;
         atk->setText(QString::number(role.atk));
         music->SoundPlay(3);
     }
         break;
-    case 24:
-    {
-        role.atk+=10;
-        atk->setText(QString::number(role.atk));
-        music->SoundPlay(1);
-    }
-        break;
     case 28:
     {
-        role.atk+=25;
+        role.atk+=8;
         atk->setText(QString::number(role.atk));
         music->SoundPlay(1);
     }
         break;
     case 29:
     {
-        role.atk+=36;
+        role.atk+=16;
+        atk->setText(QString::number(role.atk));
+        music->SoundPlay(1);
+    }
+        break;
+    case 30:
+    {
+        role.atk+=24;
         atk->setText(QString::number(role.atk));
         music->SoundPlay(1);
     }
@@ -1281,7 +2230,7 @@ void Dungeon::items(int _itemNum, int _moveDirection)
     GetitemTimer->start(100);
     moveDirection=_moveDirection;
     Move();
-    if(itemNum==19||itemNum==20||itemNum==21)
+    if(itemNum==31||itemNum==32||itemNum==21)
     {
         (*tempNum)+=1;
         target->setText(QString::number(*tempNum));
@@ -1289,68 +2238,17 @@ void Dungeon::items(int _itemNum, int _moveDirection)
 }
 void Dungeon::Monsters(int _MonsterNum,int _moveDirection)
 {
-    if(pk(enemy[_MonsterNum])==-1)
+    if(pk(enemy[MonsterNum])==-2)
     {
-        itemNum=-1;
+        itemNum=0;
         GetitemTimer->start(100);
-    }
-    else if(pk(enemy[_MonsterNum])==-2)
-    {
-        itemNum=-2;
-        GetitemTimer->start(100);
-    }
-    else if(pk(enemy[_MonsterNum])==1)
-    {
-        itemNum=1;
-        GetitemTimer->start(100);
+        return;
     }
     else
     {
         MonsterNum=_MonsterNum;
         FightTimer->start(50);
         moveDirection=_moveDirection;
-    }
-}
-void Dungeon::doors(int _doorNum, int _moveDirection)
-{
-
-    QLabel *target=new QLabel;
-    int *tempNum=nullptr;
-    switch(_doorNum)
-    {
-    case 16:
-    {
-        target=redkeyNum;
-        tempNum=&(role.redkey);
-    }
-        break;
-    case 17:
-    {
-        target=yellowkeyNum;
-        tempNum=&(role.yellowkey);
-    }
-        break;
-    case 18:
-    {
-        target=purplekeyNum;
-        tempNum=&(role.purplekey);
-    }
-        break;
-
-    }
-    if(*tempNum==0)
-    {
-        itemNum=_doorNum;
-        GetitemTimer->start(100);
-        return;
-    }
-    else
-    {
-        moveDirection=_moveDirection;
-        Move();
-        (*tempNum)-=1;
-        target->setText(QString::number(*tempNum));
-        music->SoundPlay(6);
     }
 }
 void Dungeon::checkPrefloor()
@@ -1368,6 +2266,7 @@ void Dungeon::checkPrefloor()
     floor-=1;
     Floor->setText(QString::number(floor));
     ShowDungeon();
+    ShowFog();
     music->SoundPlay(2);//放在尾部才会音效持久
 }
 
@@ -1386,8 +2285,100 @@ void Dungeon::checkNextfloor()
     floor+=1;
     Floor->setText(QString::number(floor));
     ShowDungeon();
+    ShowFog();
     music->SoundPlay(2);
 }
+void Dungeon::breakWall(int _moveDirection)
+{
+    if(!PickaxeUse)
+        return;
+    if(role.Pickaxe==0)
+        return;
+    else if(role.mp<20)
+    {
+        itemNum=16;
+        GetitemTimer->start(100);
+        return;
+    }
+    QMessageBox message(QMessageBox::Information,"你有破墙镐","是否使用？",QMessageBox::Yes|QMessageBox::No,ptr_MianWindow);
+    message.setIconPixmap(QPixmap(":/info/image/information/Pickaxe.png"));
+    message.setWindowIcon(QIcon(":/info/image/information/提示.ico"));
+    if (message.exec()==QMessageBox::Yes)
+    {
+        role.Pickaxe--;
+        role.mp-=20;
+        updateStatusData();
+        moveDirection=_moveDirection;
+        Move();
+    }
+    else
+        return;
+}
+void Dungeon::DownstairsRun()
+{
+    if(role.Downstairs==0)
+        return;
+    else if(role.mp<40)
+    {
+        itemNum=17;
+        GetitemTimer->start(100);
+        return;
+    }
+    role.Downstairs--;
+    role.mp-=20;
+    updateStatusData();
+
+    bool findflag=false;
+    int i,j;
+    for(i=0;i<12;i++)
+    {
+        for(j=0;j<16;j++)
+        {
+            if(map[floor-1][i][j]==7)
+            {
+                findflag=true;
+                break;
+            }
+        }
+        if(findflag)
+            break;
+    }
+    updateFogArea(floor-1,i,j);
+}
+
+void Dungeon::addFogArea(int floor,int i,int j,int num)
+{
+    if(i>=0&&j>=0&&i<12&&j<16)
+    {
+        FogArr[floor][i][j]+=num;
+        if(FogArr[floor][i][j]==8||FogArr[floor][i][j]>=13)
+            FogArr[floor][i][j]=15;
+        QPalette palette;
+        palette.setBrush(QPalette::Background,
+                QBrush(QImage(":/Dungeon/image/Dungeon/fog.png").
+                       copy((FogArr[floor][i][j]/4)*54,(FogArr[floor][i][j]%4)*58,54,58)
+                            ));
+        FogWidget[i][j]->setPalette(palette);
+    }
+}
+
+void Dungeon::updateFogArea(int floor,int i,int j)
+{
+    if(haveVisited[floor][i][j]==0)
+    {
+        addFogArea(floor,i,j,15);//当前
+        addFogArea(floor,i-1,j,12);//上
+        addFogArea(floor,i+1,j,3);//下
+        addFogArea(floor,i,j-1,5);//左
+        addFogArea(floor,i,j+1,10);//右
+//        addFogArea(floor,i-1,j-1,4);//左上
+//        addFogArea(floor,i-1,j+1,8);//右上
+//        addFogArea(floor,i+1,j-1,1);//左下
+//        addFogArea(floor,i+1,j+1,2);//右下
+        haveVisited[floor][i][j]=1;
+    }
+}
+
 void Dungeon::Operation(int num)
 {
     bool flag;
@@ -1418,17 +2409,48 @@ void Dungeon::Operation(int num)
     }
     else
         return;
-
+    if(floor==8)
+    {
+        if(flag&&map[floor-1][_x][_y]!=0)
+        {
+            if(_x==surface->sign->roomWidget->chatRoom->cur_x&&
+                    _y==surface->sign->roomWidget->chatRoom->cur_y)
+            {
+                surface->sign->roomWidget->chatRoom->FightRequest();
+                //isFighting=true;
+                return;
+            }
+            else
+                surface->sign->roomWidget->chatRoom->udpkPosRequest(x,y,num);
+        }
+    }
     if(flag&&map[floor-1][_x][_y]==0)
     {
-        return;
+        breakWall(num);
     }
     else if(flag&&map[floor-1][_x][_y]==1)
     {
         moveDirection=num;
         Move();
     }
-    else if(flag&&map[floor-1][_x][_y]==2)
+    else if(flag&&map[floor-1][_x][_y]==6)
+    {
+        checkPrefloor();
+    }
+    else if(flag&&map[floor-1][_x][_y]==7)
+    {
+        checkNextfloor();
+    }
+    else if(flag&&map[floor-1][_x][_y]==12)
+    {
+        Store->show();
+        if(role.scoreNum-Store->Currstore_price>=0)
+        {
+            Store->setChooseEnable=true;
+        }
+        Store->StoreWinisShow=true;
+    }
+    else if(flag&&map[floor-1][_x][_y]==14)
     {
         moveDirection=num;
         Move();
@@ -1436,73 +2458,37 @@ void Dungeon::Operation(int num)
         score->setText(QString::number(role.scoreNum));
         music->SoundPlay(0);
     }
-    else if(flag&&map[floor-1][_x][_y]==3)
+    else if(flag&&map[floor-1][_x][_y]==15)
     {
         Monsters(0,num);
     }
-    else if(flag&&map[floor-1][_x][_y]==4)
+    else if(flag&&map[floor-1][_x][_y]==16)
     {
         Monsters(1,num);
     }
-    else if(flag&&map[floor-1][_x][_y]==5)
+    else if(flag&&map[floor-1][_x][_y]==17)
     {
         QuestionBox(num);
     }
-    else if(flag&&map[floor-1][_x][_y]==8)
-    {
-        items(8,num);
-    }
-    else if(flag&&map[floor-1][_x][_y]==9)
-    {
-        items(9,num);
-    }
-    else if(flag&&map[floor-1][_x][_y]==10)
-    {
-        items(10,num);
-    }
-    else if(flag&&map[floor-1][_x][_y]==11)
+    else if(flag&&map[floor-1][_x][_y]==18)
     {
         Monsters(2,num);
     }
-    else if(flag&&map[floor-1][_x][_y]==12)
+    else if(flag&&map[floor-1][_x][_y]==19)
     {
         Monsters(3,num);
     }
-    else if(flag&&map[floor-1][_x][_y]==14)
-    {
-        checkPrefloor();
-    }
-    else if(flag&&map[floor-1][_x][_y]==15)
-    {
-        checkNextfloor();
-    }
-    else if(flag&&map[floor-1][_x][_y]==16)
-    {
-        doors(16,num);
-    }
-    else if(flag&&map[floor-1][_x][_y]==17)
-    {
-        doors(17,num);
-    }
-    else if(flag&&map[floor-1][_x][_y]==18)
-    {
-        doors(18,num);
-    }
-    else if(flag&&map[floor-1][_x][_y]==19)
-    {
-        items(19,num);
-    }
     else if(flag&&map[floor-1][_x][_y]==20)
     {
-        items(20,num);
+        Monsters(4,num);
     }
     else if(flag&&map[floor-1][_x][_y]==21)
     {
-        items(21,num);
+        Monsters(5,num);
     }
     else if(flag&&map[floor-1][_x][_y]==22)
     {
-        items(22,num);
+        Monsters(6,num);
     }
     else if(flag&&map[floor-1][_x][_y]==23)
     {
@@ -1514,15 +2500,15 @@ void Dungeon::Operation(int num)
     }
     else if(flag&&map[floor-1][_x][_y]==25)
     {
-        Monsters(4,num);
+        items(25,num);
     }
     else if(flag&&map[floor-1][_x][_y]==26)
     {
-        Monsters(5,num);
+        items(26,num);
     }
     else if(flag&&map[floor-1][_x][_y]==27)
     {
-        Monsters(6,num);
+        items(27,num);
     }
     else if(flag&&map[floor-1][_x][_y]==28)
     {
@@ -1532,14 +2518,17 @@ void Dungeon::Operation(int num)
     {
         items(29,num);
     }
-    else if(flag&&map[floor-1][_x][_y]==35)
+    else if(flag&&map[floor-1][_x][_y]==30)
     {
-        Store->show();
-        if(role.scoreNum-Store->Currstore_price>=0)
-        {
-            Store->setChooseEnable=true;
-        }
-        Store->StoreWinisShow=true;
+        items(30,num);
+    }
+    else if(flag&&map[floor-1][_x][_y]==31)
+    {
+        items(31,num);
+    }
+    else if(flag&&map[floor-1][_x][_y]==32)
+    {
+        items(32,num);
     }
     else
     {
@@ -1549,11 +2538,7 @@ void Dungeon::Operation(int num)
 
 void Dungeon::keyPressEvent(QKeyEvent *event)
 {
-    if(!isShow)
-    {
-        return;
-    }
-    else if(isFighting)//keyevent 是实时检测的，只要在战斗结束后再设置isFighting为false，就可以了
+    if(isFighting)//keyevent 是实时检测的，只要在战斗结束后再设置isFighting为false，就可以了
     {
         return;
     }
@@ -1561,22 +2546,46 @@ void Dungeon::keyPressEvent(QKeyEvent *event)
     {
         return;
     }
-
-    switch(event->key())
+    else if(menu->MenuWinShow)
     {
-
-    case Qt::Key_W://上
-        Operation(0);
-        break;
-    case Qt::Key_S://下
-        Operation(1);
-        break;
-    case Qt::Key_A://左
-        Operation(2);
-        break;
-    case Qt::Key_D://右
-        Operation(3);
-        break;
+        return;
     }
+
+    if(event->key()==Qt::Key_W||event->key()==Qt::Key_Up)
+    {
+        if(floor==8&&event->isAutoRepeat())//在pk地牢中,为了保证每次只移动一次，长按不响应
+            return;
+        Operation(0);
+    }
+    else if(event->key()==Qt::Key_S||event->key()==Qt::Key_Down)
+    {
+        if(floor==8&&event->isAutoRepeat())
+            return;
+        Operation(1);
+    }
+    else if(event->key()==Qt::Key_A||event->key()==Qt::Key_Left)
+    {
+        if(floor==8&&event->isAutoRepeat())
+            return;
+        Operation(2);
+    }
+    else if(event->key()==Qt::Key_D||event->key()==Qt::Key_Right)
+    {
+        if(floor==8&&event->isAutoRepeat())
+            return;
+        Operation(3);
+    }
+    else if(event->key()==Qt::Key_P)
+    {
+        if(event->isAutoRepeat())
+            return;
+        PickaxeUse=!PickaxeUse;
+    }
+    else if(event->key()==Qt::Key_N)
+        DownstairsRun();
+    else if(event->key()==Qt::Key_Escape)
+        menu->show();
+    else
+        return;
 }
 
