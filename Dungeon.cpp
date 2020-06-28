@@ -33,6 +33,7 @@ Dungeon::Dungeon(QWidget *parent): QWidget(parent)
     initialFogArr();
     initialMapString();
     initialMonsterPic();
+    initialCmptorPic();
     initialrole();
     initialenemy();
 
@@ -176,7 +177,24 @@ void Dungeon::initialMonsterPic()
     MonsterPic[5]="border-image: url(:/info/image/information/红色食人花.png);";
     MonsterPic[6]="border-image: url(:/info/image/information/飞行鸭.png);";
 }
-
+void Dungeon::initialCmptorPic()
+{
+    for(int i=0;i<4;++i)
+    {
+        for(int j=0;j<4;++j)
+        {
+            if(i==0||i==1)
+            {
+                CmptorPic[i][j]=QString("border-image: url(:/Cmptor/image/Cmptor/")+
+                        QString::number(i)+QString(".png);");
+                break;
+            }
+            else
+                CmptorPic[i][j]=QString("border-image: url(:/Cmptor/image/Cmptor/")+
+                        QString::number(i)+"/"+QString::number(i)+QString::number(j)+QString(".png);");
+        }
+    }
+}
 int Dungeon::pk(struct Monster & m)
 {
     //计算伤害值，-1表示打不动对方防御，-2表示双方都打不动对方防御
@@ -1178,7 +1196,7 @@ void Dungeon::pkStart()
         surface->sign->roomWidget->chatRoom->cur_x=10;
         surface->sign->roomWidget->chatRoom->cur_y=14;
         gLayout_Map->addWidget(competitor,10,14);
-        competitor->setStyleSheet(DungeonStytle[3][0]);
+        competitor->setStyleSheet(CmptorPic[1][0]);
         competitor->show();
     }
     else
@@ -1188,7 +1206,7 @@ void Dungeon::pkStart()
         surface->sign->roomWidget->chatRoom->cur_x=1;
         surface->sign->roomWidget->chatRoom->cur_y=1;
         gLayout_Map->addWidget(competitor,1,1);
-        competitor->setStyleSheet(DungeonStytle[3][0]);
+        competitor->setStyleSheet(CmptorPic[1][0]);
         competitor->show();
     }
     surface->sign->roomWidget->chatRoom->udpkStatusRequest(role.hp,role.atk,role.def);
@@ -1267,7 +1285,7 @@ void Dungeon::pkMapUpdate()
                 map[floor-1][cur_x][cur_y]=1;
                 MazeWidget[cur_x][cur_y]->setStyleSheet(DungeonStytle[1][0]);
                 gLayout_Map->addWidget(competitor,cur_x,cur_y);
-                competitor->setStyleSheet(DungeonStytle[2][0]);
+                competitor->setStyleSheet(CmptorPic[0][0]);
             }
         }
         else
@@ -1287,7 +1305,7 @@ void Dungeon::pkMapUpdate()
                 map[floor-1][cur_x][cur_y]=1;
                 MazeWidget[cur_x][cur_y]->setStyleSheet(DungeonStytle[1][0]);
                 gLayout_Map->addWidget(competitor,cur_x,cur_y);
-                competitor->setStyleSheet(DungeonStytle[3][0]);
+                competitor->setStyleSheet(CmptorPic[1][0]);
             }
         }
         else
@@ -1307,7 +1325,7 @@ void Dungeon::pkMapUpdate()
                 map[floor-1][cur_x][cur_y]=1;
                 MazeWidget[cur_x][cur_y]->setStyleSheet(DungeonStytle[1][0]);
                 gLayout_Map->addWidget(competitor,cur_x,cur_y);
-                competitor->setStyleSheet(DungeonStytle[4][moveNum++%4]);
+                competitor->setStyleSheet(CmptorPic[2][moveNum++%4]);
             }
         }
         else
@@ -1327,7 +1345,7 @@ void Dungeon::pkMapUpdate()
                 map[floor-1][cur_x][cur_y]=1;
                 MazeWidget[cur_x][cur_y]->setStyleSheet(DungeonStytle[1][0]);
                 gLayout_Map->addWidget(competitor,cur_x,cur_y);
-                competitor->setStyleSheet(DungeonStytle[5][moveNum++%4]);
+                competitor->setStyleSheet(CmptorPic[3][moveNum++%4]);
             }
         }
         else

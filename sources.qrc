@@ -66,6 +66,15 @@
         <file>image/Dungeon/23.png</file>
         <file>image/Dungeon/24.png</file>
         <file>image/Dungeon/25.png</file>
+        <file>image/Dungeon/26.png</file>
+        <file>image/Dungeon/27.png</file>
+        <file>image/Dungeon/28.png</file>
+        <file>image/Dungeon/29.png</file>
+        <file>image/Dungeon/30.png</file>
+        <file>image/Dungeon/31.png</file>
+        <file>image/Dungeon/32.png</file>
+        <file>image/Dungeon/dead.png</file>
+        <file>image/Dungeon/fog.png</file>
         <file>image/Dungeon/4/40.png</file>
         <file>image/Dungeon/4/41.png</file>
         <file>image/Dungeon/4/42.png</file>
@@ -94,30 +103,33 @@
         <file>image/Dungeon/18/181.png</file>
         <file>image/Dungeon/18/182.png</file>
         <file>image/Dungeon/18/183.png</file>
-        <file>image/Dungeon/20/200.png</file>
-        <file>image/Dungeon/20/201.png</file>
-        <file>image/Dungeon/20/202.png</file>
-        <file>image/Dungeon/20/203.png</file>
-        <file>image/Dungeon/22/220.png</file>
-        <file>image/Dungeon/22/221.png</file>
-        <file>image/Dungeon/22/222.png</file>
-        <file>image/Dungeon/22/223.png</file>
         <file>image/Dungeon/19/190.png</file>
         <file>image/Dungeon/19/191.png</file>
         <file>image/Dungeon/19/192.png</file>
         <file>image/Dungeon/19/193.png</file>
+        <file>image/Dungeon/20/200.png</file>
+        <file>image/Dungeon/20/201.png</file>
+        <file>image/Dungeon/20/202.png</file>
+        <file>image/Dungeon/20/203.png</file>
         <file>image/Dungeon/21/210.png</file>
         <file>image/Dungeon/21/211.png</file>
         <file>image/Dungeon/21/212.png</file>
         <file>image/Dungeon/21/213.png</file>
-        <file>image/Dungeon/26.png</file>
-        <file>image/Dungeon/27.png</file>
-        <file>image/Dungeon/28.png</file>
-        <file>image/Dungeon/29.png</file>
-        <file>image/Dungeon/30.png</file>
-        <file>image/Dungeon/31.png</file>
-        <file>image/Dungeon/fog.png</file>
-        <file>image/Dungeon/32.png</file>
-        <file>image/Dungeon/dead.png</file>
+        <file>image/Dungeon/22/220.png</file>
+        <file>image/Dungeon/22/221.png</file>
+        <file>image/Dungeon/22/222.png</file>
+        <file>image/Dungeon/22/223.png</file>
+    </qresource>
+    <qresource prefix="/Cmptor">
+        <file>image/Cmptor/0.png</file>
+        <file>image/Cmptor/1.png</file>
+        <file>image/Cmptor/2/20.png</file>
+        <file>image/Cmptor/2/21.png</file>
+        <file>image/Cmptor/2/22.png</file>
+        <file>image/Cmptor/2/23.png</file>
+        <file>image/Cmptor/3/30.png</file>
+        <file>image/Cmptor/3/31.png</file>
+        <file>image/Cmptor/3/32.png</file>
+        <file>image/Cmptor/3/33.png</file>
     </qresource>
 </RCC>

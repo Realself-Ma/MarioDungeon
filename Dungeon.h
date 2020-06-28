@@ -62,6 +62,7 @@ private:
     void setCharacterPos(int floor,int target);
     void initialMapString();
     void initialMonsterPic();//初始化怪物图片（用于战斗界面）
+    void initialCmptorPic();
     void initialrole();
     void initialenemy();
     void initialFogArr();
@@ -182,6 +183,7 @@ private:
     Monster enemy[10];
     QString DungeonStytle[41][4];
     QString MonsterPic[20];//怪物图片字符串
+    QString CmptorPic[4][4];
     int floor;
     int x;//角色位置
     int y;
