@@ -49,7 +49,7 @@ Dungeon::Dungeon(QWidget *parent): QWidget(parent)
     pre_floor=1;
     MyPonit=0;
     CmptorPoint=0;
-    CountDown=10;
+    CountDown=180;
     NetModeStart=false;
     MyWin=false;
     dogFall=false;
@@ -1172,7 +1172,7 @@ void Dungeon::NetModeCountDownRun()
     NetMode_secondes->setText(QString::number(--CountDown));
     if(CountDown<=0)
     {
-        CountDown=10;
+        CountDown=180;
         surface->sign->roomWidget->chatRoom->pkRequest();
         NetModeCountDownTimer->stop();
     }
