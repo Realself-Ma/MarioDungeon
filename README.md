@@ -18,4 +18,5 @@
 
 ## 其它
 
-- [视频介绍](https://www.bilibili.com/video/av70867935/)
+- [单机版本视频介绍](https://www.bilibili.com/video/av70867935/)
+- [联网版本视频介绍](https://www.bilibili.com/video/BV1eV41167DZ/)
