@@ -118,7 +118,6 @@ QTcpSocket* Factory::CreateQTcpSocket(QString ServerIp,int ServerPort)
     QHostAddress* serverIP = new QHostAddress();
     QString ip = ServerIp;
     serverIP->setAddress(ip);
-    serverIP->setAddress(ip);
     tcpSocket->connectToHost(*serverIP, ServerPort);
     return tcpSocket;
 }
