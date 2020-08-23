@@ -172,6 +172,7 @@ private slots:
     void ReturnRoomsPlay();//返回游戏房间
     void HelpPlay();//帮助界面
     void HelpReturnPlay();//帮助界面返回
+    void musicChangePlay();//打开/关闭音乐
     void EnterDungeon();//角色名设置完成,进入地牢
     void NetStart();
     void pkStart();

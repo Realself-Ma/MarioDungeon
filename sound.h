@@ -16,6 +16,7 @@ public:
     QTimer *DungeonSoundTimer;
     QTimer *InterfaceBGMTimer;
     QTimer *DungeonBGMTimer;
+    bool musicChange;
 public:
     void SoundPlay(int CurrentIndex);
 private:

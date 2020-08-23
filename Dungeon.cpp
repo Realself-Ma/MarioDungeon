@@ -49,7 +49,7 @@ Dungeon::Dungeon(QWidget *parent): QWidget(parent)
     pre_floor=1;
     MyPonit=0;
     CmptorPoint=0;
-    CountDown=180;
+    CountDown=80;
     NetModeStart=false;
     MyWin=false;
     dogFall=false;
@@ -960,6 +960,7 @@ void Dungeon::initialinfoWidget()
     connect(menu->ReturnRooms,SIGNAL(clicked()),this,SLOT(ReturnRoomsPlay()));
     connect(menu->Help,SIGNAL(clicked()),this,SLOT(HelpPlay()));
     connect(help->Return,SIGNAL(clicked()),this,SLOT(HelpReturnPlay()));
+    connect(menu->music,SIGNAL(clicked()),this,SLOT(musicChangePlay()));
 
     infoWidget->setMinimumSize(300,672);
     infoWidget->setStyleSheet("color:white;border-image: url(:/interface/image/interface/infobg.png);");
@@ -1022,6 +1023,26 @@ void Dungeon::HelpPlay()
 void Dungeon::HelpReturnPlay()
 {
     help->hide();
+}
+void Dungeon::musicChangePlay()
+{
+    music->musicChange=!music->musicChange;
+    if(music->musicChange==false)
+    {
+        music->InterfaceBGM->setVolume(0);
+        music->DungeonBGM->setVolume(0);
+        music->DungeonSound->setVolume(0);
+        music->FightSound->setVolume(0);
+        menu->music->setStyleSheet("border-image: url(:/info/image/information/music-off.png);");
+    }
+    else
+    {
+        music->InterfaceBGM->setVolume(50);
+        music->DungeonBGM->setVolume(50);
+        music->DungeonSound->setVolume(80);
+        music->FightSound->setVolume(80);
+        menu->music->setStyleSheet("border-image: url(:/info/image/information/music-on.png);");
+    }
 }
 void Dungeon::ShowFog()
 {
@@ -1172,7 +1193,7 @@ void Dungeon::NetModeCountDownRun()
     NetMode_secondes->setText(QString::number(--CountDown));
     if(CountDown<=0)
     {
-        CountDown=180;
+        CountDown=80;
         surface->sign->roomWidget->chatRoom->pkRequest();
         NetModeCountDownTimer->stop();
     }

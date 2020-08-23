@@ -21,10 +21,10 @@ Sound::Sound(QWidget *parent) :
     FightSoundTimer=new QTimer(this);
     connect(FightSoundTimer,SIGNAL(timeout()),this,SLOT(CheckFightSoundstate()));
 
-
     DungeonSoundTimer=new QTimer(this);
     connect(DungeonSoundTimer,SIGNAL(timeout()),this,SLOT(SoundStop()));
 
+    musicChange=true;
 }
 void Sound::CheckInterfaceBGMstate()
 {

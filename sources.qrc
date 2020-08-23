@@ -28,6 +28,8 @@
         <file>image/information/房间.png</file>
         <file>image/information/MarioLeft.png</file>
         <file>image/information/MarioRight.png</file>
+        <file>image/information/music-off.png</file>
+        <file>image/information/music-on.png</file>
     </qresource>
     <qresource prefix="/interface">
         <file>image/interface/labelbg.png</file>

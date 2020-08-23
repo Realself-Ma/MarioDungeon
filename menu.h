@@ -16,6 +16,7 @@ public:
     QPushButton *Continue;
     QPushButton *ReturnRooms;
     QPushButton *Help;
+    QPushButton *music;
     bool MenuWinShow;
 private:
     Factory* fac;

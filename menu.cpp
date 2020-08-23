@@ -21,6 +21,10 @@ Menu::Menu(QWidget *parent) :
     ReturnRooms=fac->CreateQPushButton(MenuWidget,200,200,120,30,"返回房间",button_style,fontLabel);
     ReturnRooms->hide();
     Help=fac->CreateQPushButton(MenuWidget,200,280,120,30,"帮助",button_style,fontLabel);
+
+    music=fac->CreateQPushButton(MenuWidget,300,40,30,30,"",
+                                 "border-image: url(:/info/image/information/music-on.png);");
+
 }
 void Menu::showEvent(QShowEvent *)
 {
