@@ -47,8 +47,9 @@ string MysqlServer::Register(char* name,char* password)
 	string Reply="";
 	char query[100];
 	sprintf(query, "select username from UserInfo where username = '%s'", name);
-	int ret;
-	ret = sqlQuery(query);
+	int ret = sqlQuery(query);
+	if(ret!=0)
+		return Reply;
 	res_ptr = mysql_store_result(mysql); //即使不需要返回值也要这样，否则会出错
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(sqlrow)
@@ -96,7 +97,9 @@ string MysqlServer::Login(const TcpConnectionPtr& conn,char* name,char* password
 	string Reply="";
 	char query[100];
 	sprintf(query, "select password from UserInfo where username = '%s'",name);
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret!=0)
+		return Reply;
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(!sqlrow)
@@ -127,7 +130,9 @@ string MysqlServer::FlushRoomList(char *playerName)
 	string Reply="";
 	char query[100];
 	sprintf(query,"select name,owner from rooms");
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret!=0)
+		return Reply;
 	res_ptr=mysql_store_result(mysql);
 	string allmsg;
 	string name;
@@ -167,7 +172,9 @@ string MysqlServer::CreateRoom(char* roomName,char* owner)
 	string reply="";
 	char query[100];
 	sprintf(query,"select name from rooms where name='%s'",roomName);
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret!=0)
+		return reply;
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(sqlrow)
@@ -177,7 +184,9 @@ string MysqlServer::CreateRoom(char* roomName,char* owner)
 		memset(query,0,sizeof(query));
 		mysql_free_result(res_ptr);
 		sprintf(query,"select owner from rooms where owner='%s'",owner);
-		sqlQuery(query);
+		ret=sqlQuery(query);
+		if(ret!=0)
+			return reply;
 		res_ptr = mysql_store_result(mysql);
 		sqlrow = mysql_fetch_row(res_ptr);
 		if(sqlrow)
@@ -187,7 +196,7 @@ string MysqlServer::CreateRoom(char* roomName,char* owner)
 			memset(query,0,sizeof(query));
 			mysql_free_result(res_ptr);
 			sprintf(query,"insert into rooms values('%s','%s','%s',%d)",roomName,owner,"",0);
-			int ret=sqlQuery(query);
+			ret=sqlQuery(query);
 			if(ret==-1)
 				LOG_ERROR<<"rooms insert error :"<<mysql_error(mysql);
 			else
@@ -203,7 +212,9 @@ string MysqlServer::DeleteRoom(char* playerName)
 {
 	char query[100];
 	sprintf(query,"select name from rooms where owner='%s'",playerName);
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret!=0)
+		return "";
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(!sqlrow)
@@ -215,7 +226,7 @@ string MysqlServer::DeleteRoom(char* playerName)
 	memset(query,0,sizeof(query));
 	mysql_free_result(res_ptr);
 	sprintf(query,"delete from rooms where name='%s'",roomName.c_str());
-	int ret=sqlQuery(query);
+	ret=sqlQuery(query);
 	if(ret==-1)
 	{
 		LOG_ERROR<<"delete rooms error :"<<mysql_error(mysql);
@@ -229,7 +240,9 @@ string MysqlServer::EnterRoom(char* roomName,char* playerName)
 {
 	char query[100];
 	sprintf(query,"select name from rooms where owner='%s'",playerName);
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret!=0)
+		return "";
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	bool haveRoom=false;
@@ -238,7 +251,9 @@ string MysqlServer::EnterRoom(char* roomName,char* playerName)
 	memset(query,0,sizeof(query));
 	mysql_free_result(res_ptr);
 	sprintf(query,"select owner from rooms where name='%s'",roomName);
-	sqlQuery(query);
+	ret=sqlQuery(query);
+	if(ret)
+		return "";
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(!sqlrow)
@@ -255,13 +270,13 @@ string MysqlServer::EnterRoom(char* roomName,char* playerName)
 		memset(query,0,sizeof(query));
 		mysql_free_result(res_ptr);
 		sprintf(query,"update rooms set player='%s' where name='%s'",playerName,roomName);
-		int ret=sqlQuery(query);
+		ret=sqlQuery(query);
 		if(ret==-1)
 			LOG_ERROR<<"update rooms error :"<<mysql_error(mysql);
 	}
 	memset(query,0,sizeof(query));
 	sprintf(query,"select owner,player from rooms where name='%s'",roomName);
-	int ret=sqlQuery(query);
+	ret=sqlQuery(query);
 	if(ret==-1)
 		LOG_ERROR<<"rooms name error :"<<mysql_error(mysql);
 	res_ptr = mysql_store_result(mysql);
@@ -288,7 +303,9 @@ string MysqlServer::LeaveRoom(char *playerName)
 {
 	char query[100];
 	sprintf(query,"select name from rooms where player='%s' or owner='%s'",playerName,playerName);
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret)
+		return "";
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(!sqlrow)
@@ -300,7 +317,9 @@ string MysqlServer::LeaveRoom(char *playerName)
 	mysql_free_result(res_ptr);
 	memset(query,0,sizeof(query));
 	sprintf(query,"select owner,player from rooms where name='%s'",roomName.c_str());
-	sqlQuery(query);
+	ret=sqlQuery(query);
+	if(ret)
+		return "";
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(!sqlrow)
@@ -340,7 +359,7 @@ string MysqlServer::LeaveRoom(char *playerName)
 		mysql_free_result(res_ptr);
 		sprintf(query,"update rooms set player='%s' where name='%s'","",roomName.c_str());
 		//cout<<"LeaveRoom Msg:query "<<query<<endl;
-		int ret=sqlQuery(query);
+		ret=sqlQuery(query);
 		if(ret==-1)
 			LOG_ERROR<<"update rooms error :"<<mysql_error(mysql);
 	}
@@ -350,7 +369,9 @@ string MysqlServer::ChatRoomMessage(const TcpConnectionPtr& conn,const string& p
 {
 	char query[100];
 	sprintf(query,"select name from rooms where owner='%s' or player='%s'",playerName.c_str(),playerName.c_str());
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret)
+		return "";
 	res_ptr = mysql_store_result(mysql);
 	vector<char*> nameVec;
 	vector<TcpConnectionPtr> connVec;
@@ -369,7 +390,7 @@ string MysqlServer::ChatRoomMessage(const TcpConnectionPtr& conn,const string& p
 		memset(query,0,sizeof(query));
 		mysql_free_result(res_ptr);
 		sprintf(query,"select owner,player from rooms where name='%s'",nameVec[i]);
-		int ret=sqlQuery(query);
+		ret=sqlQuery(query);
 		if(ret==-1)
 			LOG_ERROR<<"rooms name error :"<<mysql_error(mysql);
 		res_ptr = mysql_store_result(mysql);
@@ -410,7 +431,9 @@ string MysqlServer::startRequest(const TcpConnectionPtr& conn,char* playername,c
 {	
 	char query[100];
 	sprintf(query,"select ready from rooms where name='%s'",roomName);
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret)
+		return "";
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(!sqlrow)
@@ -508,7 +531,9 @@ string MysqlServer::initialReadyRequest(char* playerName)
 {
 	char query[100];
 	snprintf(query,sizeof(query),"select name from rooms where player='%s'",playerName);
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret)
+		return "";
 	res_ptr = mysql_store_result(mysql);
 	vector<char*> nameVec;
 	while((sqlrow=mysql_fetch_row(res_ptr)))
@@ -525,7 +550,7 @@ string MysqlServer::initialReadyRequest(char* playerName)
 		memset(query,0,sizeof(query));
 		mysql_free_result(res_ptr);
 		snprintf(query,sizeof(query),"update rooms set ready=%d where name='%s'",0,nameVec[i]);
-		int ret=sqlQuery(query);
+		ret=sqlQuery(query);
 		if(ret==-1)
 			LOG_ERROR<<"update ready error :"<<mysql_error(mysql);
 	}
@@ -535,7 +560,9 @@ string MysqlServer::initialPlayerRequest(char* playerName)
 {
 	char query[100];
 	snprintf(query,sizeof(query),"select name from rooms where player='%s'",playerName);
-	sqlQuery(query);
+	int ret=sqlQuery(query);
+	if(ret)
+		return "";
 	res_ptr = mysql_store_result(mysql);
 	vector<char*> nameVec;
 	while((sqlrow=mysql_fetch_row(res_ptr)))
@@ -552,7 +579,7 @@ string MysqlServer::initialPlayerRequest(char* playerName)
 		memset(query,0,sizeof(query));
 		mysql_free_result(res_ptr);
 		snprintf(query,sizeof(query),"update rooms set player='%s' where name='%s'","",nameVec[i]);
-		int ret=sqlQuery(query);
+		ret=sqlQuery(query);
 		if(ret==-1)
 			LOG_ERROR<<"update player error :"<<mysql_error(mysql);
 	}
