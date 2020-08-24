@@ -22,8 +22,6 @@ void Sign::initialSignWidget()
 
     connect(registerBtn, SIGNAL(clicked()), this, SLOT(slotRegister()));
     connect(LogInBtn, SIGNAL(clicked()), this, SLOT(slotLogIn()));
-//    tcpSocket=fac->CreateQTcpSocket(SERVER_IP,SERVER_PORT);
-//    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(dataReceived()));
 
     QGridLayout* mainLayout = new QGridLayout(this);
     mainLayout->addWidget(nameLabel, 0, 0);
@@ -74,8 +72,7 @@ void Sign::slotLogIn()
 //        QMessageBox::information(this, "无效的用户名", "用户名中包含非法字符！");
 //        return;
 //    }
-    tcpSocket=fac->CreateQTcpSocket(SERVER_IP,SERVER_PORT);
-    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(dataReceived()));
+
     QString msg=LOGIN;
     username = nameLineEdit->text();
     QString password = passwordLineEdit->text();
@@ -122,4 +119,6 @@ void Sign::dataReceived()
 void Sign::showEvent(QShowEvent *)
 {
     this->setFocus();
+    tcpSocket=fac->CreateQTcpSocket(SERVER_IP,SERVER_PORT);
+    connect(tcpSocket, SIGNAL(readyRead()), this, SLOT(dataReceived()));
 }
