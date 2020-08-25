@@ -63,6 +63,7 @@ string MysqlServer::Register(char* name,char* password)
 		if(ret == -1)
 		{
 			LOG_ERROR<<"insert error :"<<mysql_error(mysql);
+			return Reply;
 		}
 		else
 		{
@@ -74,6 +75,7 @@ string MysqlServer::Register(char* name,char* password)
 			if(ret==-1)
 			{
 				LOG_ERROR<<"create table error :"<<mysql_error(mysql);
+				return Reply;
 			}
 			//把自己加入到好友表中
 			memset(query, 0, sizeof(query));
@@ -82,11 +84,13 @@ string MysqlServer::Register(char* name,char* password)
 			if(ret==-1)
 			{
 				LOG_ERROR<<"insert error :"<<mysql_error(mysql);
+				return Reply;
 			}
 			Reply += "REGISTER SUCCESS";
 			if(mysql_errno(mysql))
 			{
 				LOG_ERROR<<"retrive error :"<<mysql_error(mysql);
+				return Reply;
 			}
 		}
 	}
@@ -278,7 +282,10 @@ string MysqlServer::EnterRoom(char* roomName,char* playerName)
 	sprintf(query,"select owner,player from rooms where name='%s'",roomName);
 	ret=sqlQuery(query);
 	if(ret==-1)
+	{
 		LOG_ERROR<<"rooms name error :"<<mysql_error(mysql);
+		return "";
+	}
 	res_ptr = mysql_store_result(mysql);
 	sqlrow=mysql_fetch_row(res_ptr);
 	string owner=string(sqlrow[0]);
@@ -392,7 +399,10 @@ string MysqlServer::ChatRoomMessage(const TcpConnectionPtr& conn,const string& p
 		sprintf(query,"select owner,player from rooms where name='%s'",nameVec[i]);
 		ret=sqlQuery(query);
 		if(ret==-1)
+		{
 			LOG_ERROR<<"rooms name error :"<<mysql_error(mysql);
+			return "";
+		}
 		res_ptr = mysql_store_result(mysql);
 		sqlrow=mysql_fetch_row(res_ptr);
 		strVec.push_back(string(sqlrow[0]));
@@ -552,7 +562,10 @@ string MysqlServer::initialReadyRequest(char* playerName)
 		snprintf(query,sizeof(query),"update rooms set ready=%d where name='%s'",0,nameVec[i]);
 		ret=sqlQuery(query);
 		if(ret==-1)
+		{
 			LOG_ERROR<<"update ready error :"<<mysql_error(mysql);
+			return "";
+		}
 	}
 	return "";
 }
@@ -581,7 +594,10 @@ string MysqlServer::initialPlayerRequest(char* playerName)
 		snprintf(query,sizeof(query),"update rooms set player='%s' where name='%s'","",nameVec[i]);
 		ret=sqlQuery(query);
 		if(ret==-1)
+		{
 			LOG_ERROR<<"update player error :"<<mysql_error(mysql);
+			return "";
+		}
 	}
 	return "";
 }
