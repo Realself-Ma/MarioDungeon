@@ -8,32 +8,60 @@ int MysqlServer::connect()
         LOG_ERROR<<"mysql init falied";
         return -1;
     }
-
-    mysql = mysql_real_connect(mysql,SERVER_IP, "root", "140226", "MarioDungeon", 0, NULL, 0);//连接到数据库
+	if(real_connect())
+	{
+        LOG_ERROR<<"mysql real_connect falied";
+        return -1;		
+	}
+	
+    return 0;
+}
+int MysqlServer::real_connect()
+{
+	mysql = mysql_real_connect(mysql,SERVER_IP, "root", "140226", "MarioDungeon", 0, NULL, 0);//连接到数据库
 
     if(mysql)
     {
         LOG_INFO<<"MySQL connection success";
+		int res=mysql_query(mysql, "set names utf8");//设置查询字符集为utf8
+		if(res!=0)
+		{
+			LOG_INFO<<"mysql_query set utf8 error";
+			return -1;
+		}
+		else
+			LOG_INFO<<"MySQL set utf8 success";
     }
     else
     {
         LOG_WARN<<" MySQL connection failed";
         return -1;
     }
-    return 0;
+	return 0;
 }
 int MysqlServer::sqlQuery(const char *query)
 {
-	int res=mysql_query(mysql, "set names utf8");//设置查询字符集为utf8
-	if(res!=0)
-	{
-		LOG_INFO<<"mysql_query set utf8 error";
-		return -1;
-	}
-    res=mysql_query(mysql,query);
+    int res=mysql_query(mysql,query);
     if(res)
     {
-        return -1;
+		int flag=mysql_errno(mysql);
+		if(flag==CR_SERVER_LOST)
+		{
+			if(real_connect())
+			{	
+				LOG_ERROR<<"retry real_connect falied";
+				return -1;		
+			}
+			else
+			{
+				LOG_INFO<<"retry real_connect success";
+				res=mysql_query(mysql,query);
+				if(res)
+					return -1;
+			}
+		}
+		else
+			return -1;
     }
     return 0;
 }

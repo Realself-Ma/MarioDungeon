@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "mysql/mysql.h"
+#include "mysql/errmsg.h"
 #include "muduo/net/TcpServer.h"
 #include "muduo/net/TcpConnection.h"
 #include "muduo/base/Logging.h"
@@ -24,6 +25,7 @@ public:
 	MysqlServer():mysql(nullptr),res_ptr(nullptr),sqlrow(0){}
 	void brodcast(const string& msg);
 	int connect();
+	int real_connect();
 	int sqlQuery(const char *query);
 	string Register(char* name,char* password);
 	string Login(const TcpConnectionPtr& conn,char* name,char* password);
