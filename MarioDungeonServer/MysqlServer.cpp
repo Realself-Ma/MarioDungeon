@@ -128,6 +128,7 @@ string MysqlServer::Login(const TcpConnectionPtr& conn,char* name,char* password
 {
 	string Reply="";
 	char query[100];
+	memset(query,0,sizeof(query));	
 	sprintf(query, "select password from UserInfo where username = '%s'",name);
 	int ret=sqlQuery(query);
 	if(ret!=0)
@@ -135,7 +136,7 @@ string MysqlServer::Login(const TcpConnectionPtr& conn,char* name,char* password
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(!sqlrow)
-		Reply += "You have to register first";
+		Reply += "You have to register first";	
 	else
 	{
 		if(strcmp(sqlrow[0], password) == 0)
@@ -155,6 +156,35 @@ string MysqlServer::Login(const TcpConnectionPtr& conn,char* name,char* password
 		}
 	}
 
+	return Reply;
+}
+string MysqlServer::doOfflineRequest(char* playerName)
+{
+	string Reply="";
+	char query[100];
+	sprintf(query, "select online from UserInfo where username = '%s'",playerName);
+	int ret=sqlQuery(query);
+	if(ret!=0)
+		return Reply;
+	res_ptr = mysql_store_result(mysql);
+	sqlrow = mysql_fetch_row(res_ptr);
+	if(!sqlrow)
+	{
+		printf("%s ",playerName);
+		LOG_ERROR<<"do Offline error!";
+		return Reply;
+	}
+	if(strcmp(sqlrow[0],"1")==0)
+	{
+		mysql_free_result(res_ptr);
+		memset(query,0,sizeof(query));
+		sprintf(query,"update UserInfo set online=%d where username='%s'",0,playerName);
+		sqlQuery(query);		
+	}
+	if(mysql_errno(mysql))
+	{
+		LOG_ERROR<<"Retrive error :"<<mysql_error(mysql);
+	}
 	return Reply;
 }
 string MysqlServer::FlushRoomList(char *playerName)
@@ -299,6 +329,17 @@ string MysqlServer::EnterRoom(char* roomName,char* playerName)
 	}
 	if(strcmp(sqlrow[0],playerName)!=0)
 	{
+		memset(query,0,sizeof(query));
+		mysql_free_result(res_ptr);
+		sprintf(query,"select player from rooms where name='%s'",roomName);
+		ret=sqlQuery(query);
+		if(ret==-1)
+			LOG_ERROR<<"select rooms error :"<<mysql_error(mysql);
+		res_ptr = mysql_store_result(mysql);
+		sqlrow = mysql_fetch_row(res_ptr);
+		if(strcmp(sqlrow[0],"")!=0)
+			return "room is full";
+		
 		memset(query,0,sizeof(query));
 		mysql_free_result(res_ptr);
 		sprintf(query,"update rooms set player='%s' where name='%s'",playerName,roomName);

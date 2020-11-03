@@ -203,6 +203,12 @@ string Codec::deCodeMessage(const TcpConnectionPtr& conn,const string& recv,Time
         snprintf(playerName,sizeof(playerName),msg.substr(0).c_str());
 		return _Mysql.initialPlayerRequest(playerName);
 	}
+	else if(rqstr==OFFLINERQ)
+	{
+		char playerName[20];
+        snprintf(playerName,sizeof(playerName),msg.substr(0).c_str());
+		return _Mysql.doOfflineRequest(playerName);
+	}
 	else
 	{
 		return "";

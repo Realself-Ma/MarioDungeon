@@ -45,6 +45,7 @@ public:
 	string gameoverRequest(const TcpConnectionPtr& conn,char* playerName);
 	string initialReadyRequest(char* playerName);
 	string initialPlayerRequest(char* playerName);
+	string doOfflineRequest(char* playerName);
 
 public:
 	ConnectionMap RoomListnameMap_;
