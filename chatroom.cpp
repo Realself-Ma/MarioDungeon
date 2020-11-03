@@ -110,18 +110,6 @@ void ChatRoom::GameOverRequest()
     if(length != msg.toUtf8().length())
         return;
 }
-void ChatRoom::initialPlayerRequest()
-{
-    if(playerName!=owner_)
-    {
-        QString msg = INITPLAYERRQ;
-        msg+=playerName;
-        msg+=ENDFLAG;
-        int length = tcpSocket->write(msg.toUtf8(), msg.toUtf8().length());
-        if(length != msg.toUtf8().length())
-            return;
-    }
-}
 void ChatRoom::dataReceived()
 {
     QByteArray datagram;
@@ -249,4 +237,16 @@ void ChatRoom::showEvent(QShowEvent *)
     connect(tcpSocket,SIGNAL(connected()),this,SLOT (slotConnected()));
     if(playerName!=""&&owner_!=""&&playerName!=owner_)
         initialReadyRquest();
+}
+void ChatRoom::closeEvent(QCloseEvent*)
+{
+    //qDebug()<<"------------closeEvent------------";
+    //initialPlayerRequest();
+    //doOfflineRequest();
+}
+void ChatRoom::hideEvent(QHideEvent*)
+{
+    //qDebug()<<"------------hideEvent------------";
+    //initialPlayerRequest();
+    //doOfflineRequest();
 }

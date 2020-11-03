@@ -21,12 +21,15 @@ public:
     QString owner_;
     ChatRoom* chatRoom;
     QPushButton* startGameBtn;
+    void initialPlayerRequest();
+    void doOfflineRequest();
 private:
     void initialmainWidget();
     void intialRoomPlayersWidget();
     void initialRoomsListBtn();
     void initialCreateroomDialog();
     void showEvent(QShowEvent *);
+    void closeEvent(QCloseEvent*);
     void flushRoomList();
     void doEnterRoom();
     void startRq();

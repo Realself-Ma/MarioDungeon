@@ -111,6 +111,10 @@ void Sign::dataReceived()
     {
         QMessageBox::information(this, "The name has been registered", "The name has been registered");
     }
+    else if(msg=="another client have Login this acount")
+    {
+        QMessageBox::information(this, "another client have Login this acount", "another client have Login this acount");
+    }
     else
         return;
 

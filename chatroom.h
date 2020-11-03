@@ -27,7 +27,6 @@ public:
     void udpkStatusRequest(int hp, int atk, int def);
     void FightRequest();
     void GameOverRequest();
-    void initialPlayerRequest();
     QString competitoName;
     int cur_x;
     int cur_y;
@@ -46,6 +45,8 @@ private:
     bool pkStartGet;
 private:
     void showEvent(QShowEvent *);
+    void closeEvent(QCloseEvent*);
+    void hideEvent(QHideEvent*);
     void initialChatRoomWidget();
     void mapRequest();
     void initialReadyRquest();

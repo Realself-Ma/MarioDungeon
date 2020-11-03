@@ -296,6 +296,27 @@ void rooms::GameStart()
     else
         beReady();
 }
+void rooms::initialPlayerRequest()
+{
+    if(playerName!=owner_)
+    {
+        QString msg = INITPLAYERRQ;
+        msg+=playerName;
+        msg+=ENDFLAG;
+        int length = tcpSocket->write(msg.toUtf8(), msg.toUtf8().length());
+        if(length != msg.toUtf8().length())
+            return;
+    }
+}
+void rooms::doOfflineRequest()
+{
+    QString msg = OFFLINERQ;
+    msg+=playerName;
+    msg+=ENDFLAG;
+    int length = tcpSocket->write(msg.toUtf8(), msg.toUtf8().length());
+    if(length != msg.toUtf8().length())
+        return;
+}
 void rooms::dataReceived()
 {
     QByteArray datagram;
@@ -351,6 +372,11 @@ void rooms::dataReceived()
     else if(msg=="Enter Refused!")
     {
         QMessageBox::information(this, "进入房间失败", "房主不能进入他人房间,可以删除自己的房间后进入");
+        return;
+    }
+    else if(msg=="room is full")
+    {
+        QMessageBox::information(this, "房间已满员", "房间已满员");
         return;
     }
     else if(msg.mid(0,9)=="EnterRoom")
@@ -415,4 +441,10 @@ void rooms::showEvent(QShowEvent *)
     chatRoom->playerName=playerName;
     //qDebug()<<"flushRooms";
     flushRoomList();
+}
+void rooms::closeEvent(QCloseEvent*)
+{
+    //qDebug()<<"------------closeEvent------------";
+    initialPlayerRequest();
+    doOfflineRequest();
 }

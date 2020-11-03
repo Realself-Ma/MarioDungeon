@@ -22,5 +22,5 @@
 #define GAMEOVERRQ  "GRQ"
 #define INITREQDYRQ "IRQ"
 #define INITPLAYERRQ "YRQ"
-
+#define OFFLINERQ   "ORQ"
 #endif // REQUEST_H

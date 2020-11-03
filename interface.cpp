@@ -120,7 +120,12 @@ void interface::Quit()
     message.setButtonText(QMessageBox::No, QString("返 回"));
     if(message.exec()==QMessageBox::Yes)
     {
-        sign->roomWidget->chatRoom->initialPlayerRequest();
+        if(sign->roomWidget->isVisible())
+        {
+            //qDebug()<<"------------isVisible------------";
+            sign->roomWidget->initialPlayerRequest();
+            sign->roomWidget->doOfflineRequest();
+        }
         QuitTimer->start(100);
     }
     else
