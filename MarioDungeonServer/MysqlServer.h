@@ -46,11 +46,11 @@ public:
 	string initialReadyRequest(char* playerName);
 	string initialPlayerRequest(char* playerName);
 	string doOfflineRequest(char* playerName);
-
+	string TruncateTableRequest();
 public:
 	ConnectionMap RoomListnameMap_;
 	ConnectionMap ChatRoomnameMap_;
-	vector<string> msgList;
+	deque<string> msgList;
 private:
 	MYSQL *mysql;
     MYSQL_RES *res_ptr;

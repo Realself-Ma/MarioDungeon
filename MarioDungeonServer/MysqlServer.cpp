@@ -81,7 +81,10 @@ string MysqlServer::Register(char* name,char* password)
 	res_ptr = mysql_store_result(mysql); //即使不需要返回值也要这样，否则会出错
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(sqlrow)
+	{
 		Reply += "The name has been registered";
+		mysql_free_result(res_ptr);//不释放保存的结果，会发生内存泄漏！！！找了好久才找到
+	}
 	else
 	{
 		mysql_free_result(res_ptr);
@@ -95,6 +98,8 @@ string MysqlServer::Register(char* name,char* password)
 		}
 		else
 		{
+			Reply += "REGISTER SUCCESS";
+			/*
 			//注册成功
 			//新建一个用户表，用于保存用户信息
 			memset(query, 0, sizeof(query));
@@ -120,6 +125,7 @@ string MysqlServer::Register(char* name,char* password)
 				LOG_ERROR<<"retrive error :"<<mysql_error(mysql);
 				return Reply;
 			}
+			*/
 		}
 	}
 	return Reply;
@@ -136,26 +142,29 @@ string MysqlServer::Login(const TcpConnectionPtr& conn,char* name,char* password
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(!sqlrow)
+	{
 		Reply += "You have to register first";	
+	}
 	else
 	{
 		if(strcmp(sqlrow[0], password) == 0)
 		{
 			Reply += "LOG IN SUCCESS";
 			std::string namestr(name);
-			mysql_free_result(res_ptr);
 			memset(query,0,sizeof(query));
 			sprintf(query,"update UserInfo set online=%d where username='%s'",1,name);
 			sqlQuery(query);
 		}
 		else
+		{
 			Reply += "password is wrong";
+		}
 		if(mysql_errno(mysql))
 		{
 			LOG_ERROR<<"Retrive error :"<<mysql_error(mysql);
 		}
 	}
-
+	mysql_free_result(res_ptr);
 	return Reply;
 }
 string MysqlServer::doOfflineRequest(char* playerName)
@@ -172,11 +181,11 @@ string MysqlServer::doOfflineRequest(char* playerName)
 	{
 		printf("%s ",playerName);
 		LOG_ERROR<<"do Offline error!";
+		mysql_free_result(res_ptr);
 		return Reply;
 	}
 	if(strcmp(sqlrow[0],"1")==0)
 	{
-		mysql_free_result(res_ptr);
 		memset(query,0,sizeof(query));
 		sprintf(query,"update UserInfo set online=%d where username='%s'",0,playerName);
 		sqlQuery(query);		
@@ -185,6 +194,7 @@ string MysqlServer::doOfflineRequest(char* playerName)
 	{
 		LOG_ERROR<<"Retrive error :"<<mysql_error(mysql);
 	}
+	mysql_free_result(res_ptr);
 	return Reply;
 }
 string MysqlServer::FlushRoomList(char *playerName)
@@ -240,7 +250,10 @@ string MysqlServer::CreateRoom(char* roomName,char* owner)
 	res_ptr = mysql_store_result(mysql);
 	sqlrow = mysql_fetch_row(res_ptr);
 	if(sqlrow)
+	{
 		reply+="duplicated name!";
+		mysql_free_result(res_ptr);
+	}
 	else
 	{
 		memset(query,0,sizeof(query));
@@ -252,7 +265,10 @@ string MysqlServer::CreateRoom(char* roomName,char* owner)
 		res_ptr = mysql_store_result(mysql);
 		sqlrow = mysql_fetch_row(res_ptr);
 		if(sqlrow)
+		{
 			reply+="you already have a room!";
+			mysql_free_result(res_ptr);			
+		}
 		else
 		{
 			memset(query,0,sizeof(query));
@@ -282,6 +298,7 @@ string MysqlServer::DeleteRoom(char* playerName)
 	if(!sqlrow)
 	{
 		LOG_ERROR<<"Delete Room error!";
+		mysql_free_result(res_ptr);
 		return "No Room!";
 	}
 	string roomName=string(sqlrow[0]);
@@ -321,10 +338,12 @@ string MysqlServer::EnterRoom(char* roomName,char* playerName)
 	if(!sqlrow)
 	{
 		LOG_ERROR<<"rooms find error!";
+		mysql_free_result(res_ptr);
 		return "";
 	}
 	else if(haveRoom&&strcmp(sqlrow[0],playerName)!=0)
 	{
+		mysql_free_result(res_ptr);
 		return "Enter Refused!";
 	}
 	if(strcmp(sqlrow[0],playerName)!=0)
@@ -338,7 +357,10 @@ string MysqlServer::EnterRoom(char* roomName,char* playerName)
 		res_ptr = mysql_store_result(mysql);
 		sqlrow = mysql_fetch_row(res_ptr);
 		if(strcmp(sqlrow[0],"")!=0)
+		{
+			mysql_free_result(res_ptr);
 			return "room is full";
+		}
 		
 		memset(query,0,sizeof(query));
 		mysql_free_result(res_ptr);
@@ -347,6 +369,8 @@ string MysqlServer::EnterRoom(char* roomName,char* playerName)
 		if(ret==-1)
 			LOG_ERROR<<"update rooms error :"<<mysql_error(mysql);
 	}
+	else
+		mysql_free_result(res_ptr);
 	memset(query,0,sizeof(query));
 	sprintf(query,"select owner,player from rooms where name='%s'",roomName);
 	ret=sqlQuery(query);
@@ -387,6 +411,7 @@ string MysqlServer::LeaveRoom(char *playerName)
 	if(!sqlrow)
 	{
 		LOG_ERROR<<"roomName find error!";
+		mysql_free_result(res_ptr);
 		return "";
 	}
 	string roomName=string(sqlrow[0]);
@@ -401,6 +426,7 @@ string MysqlServer::LeaveRoom(char *playerName)
 	if(!sqlrow)
 	{
 		LOG_ERROR<<"owner,player find error!";
+		mysql_free_result(res_ptr);
 		return "";
 	}
 	string ownerName=string(sqlrow[0]);
@@ -432,13 +458,13 @@ string MysqlServer::LeaveRoom(char *playerName)
 	if(ownerName!=string(playerName))
 	{
 		memset(query,0,sizeof(query));
-		mysql_free_result(res_ptr);
 		sprintf(query,"update rooms set player='%s' where name='%s'","",roomName.c_str());
 		//cout<<"LeaveRoom Msg:query "<<query<<endl;
 		ret=sqlQuery(query);
 		if(ret==-1)
 			LOG_ERROR<<"update rooms error :"<<mysql_error(mysql);
 	}
+	mysql_free_result(res_ptr);
 	return "";
 }
 string MysqlServer::ChatRoomMessage(const TcpConnectionPtr& conn,const string& playerName)
@@ -449,8 +475,8 @@ string MysqlServer::ChatRoomMessage(const TcpConnectionPtr& conn,const string& p
 	if(ret)
 		return "";
 	res_ptr = mysql_store_result(mysql);
-	vector<char*> nameVec;
-	vector<TcpConnectionPtr> connVec;
+	deque<char*> nameVec;
+	deque<TcpConnectionPtr> connVec;
 	while((sqlrow=mysql_fetch_row(res_ptr)))
 	{
 		nameVec.push_back(sqlrow[0]);
@@ -458,9 +484,10 @@ string MysqlServer::ChatRoomMessage(const TcpConnectionPtr& conn,const string& p
 	if(nameVec.size()==0)
 	{
 		LOG_ERROR<<"ChatRoomMessage error!";
+		mysql_free_result(res_ptr);
 		return "";
 	}
-	vector<string> strVec;
+	deque<string> strVec;
 	for(int i=0;i<(int)nameVec.size();++i)
 	{
 		memset(query,0,sizeof(query));
@@ -488,7 +515,10 @@ string MysqlServer::ChatRoomMessage(const TcpConnectionPtr& conn,const string& p
 			}
 		}
 		strVec.clear();
+		//strVec.shrink_to_fit();
 	}
+	//nameVec.clear();
+	//nameVec.shrink_to_fit();
 	char msgLen[10];
 	int size;
 	for(int i=0;i<(int)msgList.size();++i)
@@ -504,6 +534,10 @@ string MysqlServer::ChatRoomMessage(const TcpConnectionPtr& conn,const string& p
 			connVec[i]->send(msg);
 	}
 	msgList.clear();
+	msgList.shrink_to_fit();
+	//connVec.clear();
+	//connVec.shrink_to_fit();
+	mysql_free_result(res_ptr);
 	return "ChatRoomMessage";
 }
 string MysqlServer::startRequest(const TcpConnectionPtr& conn,char* playername,char* roomName)
@@ -518,6 +552,7 @@ string MysqlServer::startRequest(const TcpConnectionPtr& conn,char* playername,c
 	if(!sqlrow)
 	{
 		LOG_ERROR<<"ready find error!";
+		mysql_free_result(res_ptr);
 		return "";
 	}
 	string rq;	
@@ -526,6 +561,7 @@ string MysqlServer::startRequest(const TcpConnectionPtr& conn,char* playername,c
 	else
 		rq="玩家未准备!";
 	msgList.push_back(rq);
+	mysql_free_result(res_ptr);
 	ChatRoomMessage(conn,playername);
 	return "";
 }
@@ -622,20 +658,22 @@ string MysqlServer::initialReadyRequest(char* playerName)
 	if(nameVec.size()==0)
 	{
 		LOG_ERROR<<"ChatRoomMessage error!";
+		mysql_free_result(res_ptr);
 		return "";
 	}
 	for(int i=0;i<(int)nameVec.size();++i)
 	{
 		memset(query,0,sizeof(query));
-		mysql_free_result(res_ptr);
 		snprintf(query,sizeof(query),"update rooms set ready=%d where name='%s'",0,nameVec[i]);
 		ret=sqlQuery(query);
 		if(ret==-1)
 		{
 			LOG_ERROR<<"update ready error :"<<mysql_error(mysql);
+			mysql_free_result(res_ptr);
 			return "";
 		}
 	}
+	mysql_free_result(res_ptr);
 	return "";
 }
 string MysqlServer::initialPlayerRequest(char* playerName)
@@ -654,19 +692,43 @@ string MysqlServer::initialPlayerRequest(char* playerName)
 	if(nameVec.size()==0)
 	{
 		LOG_ERROR<<"ChatRoomMessage error!";
+		mysql_free_result(res_ptr);
 		return "";
 	}
 	for(int i=0;i<(int)nameVec.size();++i)
 	{
 		memset(query,0,sizeof(query));
-		mysql_free_result(res_ptr);
 		snprintf(query,sizeof(query),"update rooms set player='%s' where name='%s'","",nameVec[i]);
 		ret=sqlQuery(query);
 		if(ret==-1)
 		{
 			LOG_ERROR<<"update player error :"<<mysql_error(mysql);
+			mysql_free_result(res_ptr);
 			return "";
 		}
+	}
+	mysql_free_result(res_ptr);
+	return "";
+}
+string MysqlServer::TruncateTableRequest()
+{
+	char query[100];
+	snprintf(query,sizeof(query),"truncate table UserInfo");
+	int ret=sqlQuery(query);
+	if(ret==-1)
+	{
+		LOG_ERROR<<"truncate table error :"<<mysql_error(mysql);
+		mysql_free_result(res_ptr);
+		return "";
+	}
+	memset(query,0,sizeof(query));
+	snprintf(query,sizeof(query),"truncate table rooms");
+	ret=sqlQuery(query);
+	if(ret==-1)
+	{
+		LOG_ERROR<<"truncate table error :"<<mysql_error(mysql);
+		mysql_free_result(res_ptr);
+		return "";
 	}
 	return "";
 }

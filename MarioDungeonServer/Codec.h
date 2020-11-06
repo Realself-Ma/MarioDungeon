@@ -11,7 +11,7 @@ class Codec
 public:
 	Codec();
 	void onConnection(const TcpConnectionPtr& conn);
-	string deCodeMessage(const TcpConnectionPtr& conn,const string& recv,Timestamp time);
+	string deCodeMessage(const TcpConnectionPtr& conn,const string& recv);
 private:
 	MysqlServer _Mysql;
 };

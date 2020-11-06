@@ -12,8 +12,10 @@ void Codec::onConnection(const TcpConnectionPtr& conn)
 {
 	conn_.insert(conn);
 }
-string Codec::deCodeMessage(const TcpConnectionPtr& conn,const string& recv,Timestamp time)
+string Codec::deCodeMessage(const TcpConnectionPtr& conn,const string& recv)
 {
+	if(recv.size()<3)
+		return "";
 	//cout<<"recv: "<<recv<<endl;
 	string rqstr=recv.substr(0,3);
 	string msg=recv.substr(3);
@@ -208,6 +210,10 @@ string Codec::deCodeMessage(const TcpConnectionPtr& conn,const string& recv,Time
 		char playerName[20];
         snprintf(playerName,sizeof(playerName),msg.substr(0).c_str());
 		return _Mysql.doOfflineRequest(playerName);
+	}
+	else if(rqstr==TRUNCATETABLERQ)
+	{
+		return _Mysql.TruncateTableRequest();
 	}
 	else
 	{

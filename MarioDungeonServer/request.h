@@ -23,5 +23,5 @@
 #define INITREADYRQ "IRQ"
 #define INITPLAYERRQ "YRQ"
 #define OFFLINERQ   "ORQ"
-
+#define TRUNCATETABLERQ "TRQ"
 #endif // REQUEST_H

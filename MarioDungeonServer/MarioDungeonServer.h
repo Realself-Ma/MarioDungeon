@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <set>
+#include <deque>
 #include "muduo/net/TcpServer.h"
 #include "muduo/net/EventLoop.h"
 #include "muduo/base/Logging.h"
@@ -22,12 +23,10 @@ public:
 	void onConnection(const TcpConnectionPtr& conn);
 	void onMessage(const TcpConnectionPtr& conn,Buffer* buf,Timestamp time);
 	void start();
-	void splitRequestMsg(string& msg);
+	void splitRequestMsg(string& msg,deque<string>& RqMsgList);
 private:
 	TcpServer _server;
 	Codec _codec;
-	ConnectionSet _connections;
-	vector<string> RqMsgList;
 };
 
 
